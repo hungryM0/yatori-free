@@ -121,7 +121,16 @@ function App() {
       ) : (
         <Login onLoginSuccess={handleLoginSuccess} />
       )}
-      <Toaster position="top-center" richColors />
+      <Toaster
+        position="top-center"
+        richColors
+        offset={{ top: 16 }}
+        mobileOffset={{
+          top: 'calc(88px + env(safe-area-inset-top))',
+          right: 12,
+          left: 12,
+        }}
+      />
     </>
   );
 }

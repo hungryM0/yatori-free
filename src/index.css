@@ -314,6 +314,15 @@
   color: var(--foreground) !important;
 }
 
+@media (max-width: 600px) {
+  .cn-toast {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 10px 14px !important;
+  }
+}
+
 /* Tabs Content Transition Animation */
 [data-slot="tabs-content"][data-state="active"] {
   animation: tabFadeIn var(--tab-transition-duration, 0.25s) cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -329,4 +338,3 @@
     transform: translateX(0);
   }
 }
-

@@ -71,6 +71,11 @@ export interface CurrentSessionData {
   accounts: Account[];
 }
 
+export interface VersionData {
+  version: string;
+  buildTime: string;
+}
+
 export interface Course {
   key: string;
   courseId?: string;
@@ -343,6 +348,10 @@ export function login(payload: LoginRequest) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function getVersion() {
+  return apiRequest<VersionData>('/version');
 }
 
 export function getCourses(accountId: string) {

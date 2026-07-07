@@ -12,6 +12,7 @@ import {
   getCourseDetails,
   getCourses,
   getErrorMessage,
+  getVersion,
   getTasks,
   getUserFacingErrorMessage,
   isAuthExitError,
@@ -169,6 +170,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const account = session.account;
   const [courses, setCourses] = useState<Course[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [appVersion, setAppVersion] = useState('...');
   const [activeTab, setActiveTab] = useState('courses');
   const [prevTab, setPrevTab] = useState('courses');
   const [taskFilter, setTaskFilter] = useState<'active' | 'completed'>('active');
@@ -185,6 +187,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
       return !isActive;
     });
   }, [tasks, taskFilter]);
+
+  const taskCounts = useMemo(() => {
+    return tasks.reduce(
+      (counts, task) => {
+        if (isActiveTaskStatus(task.status)) {
+          counts.active += 1;
+        } else {
+          counts.completed += 1;
+        }
+
+        return counts;
+      },
+      { active: 0, completed: 0 },
+    );
+  }, [tasks]);
 
   const hasActiveTasks = useMemo(() => {
     return tasks.some(task => isActiveTaskStatus(task.status));
@@ -608,6 +625,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     return () => clearInterval(timer);
   }, [account, fetchTasks, hasActiveTasks]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    getVersion()
+      .then((response) => {
+        if (!cancelled) {
+          setAppVersion(response.data?.version ?? '');
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load version', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Tab transition calculations (direction, distance, speed/duration)
   const tabsList = ['courses', 'sign', 'tasks', 'settings'];
   const prevIndex = tabsList.indexOf(prevTab);
@@ -627,32 +662,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#121314] text-[#191c1d] dark:text-[#e3e3e3] flex flex-col transition-colors duration-300 font-sans">
       {/* Navigation Top bar */}
-      <header className="sticky top-0 z-40 w-full bg-white dark:bg-[#1f2021] border-b border-[#e1e3e4] dark:border-[#333537] shadow-sm px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-xl tracking-tight select-none flex items-center whitespace-nowrap">
-            <span className="text-[#4285F4]">Y</span>
-            <span className="text-[#EA4335]">a</span>
-            <span className="text-[#FBBC05]">t</span>
-            <span className="text-[#4285F4]">o</span>
-            <span className="text-[#34A853]">r</span>
-            <span className="text-[#EA4335]">i</span>
-            <span className="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">学习通服务</span>
+      <header className="sticky top-0 z-40 w-full bg-white dark:bg-[#1f2021] border-b border-[#e1e3e4] dark:border-[#333537] shadow-sm px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-2">
+          <div className="font-semibold tracking-tight select-none inline-flex items-baseline leading-none whitespace-nowrap min-w-0">
+            <span className="text-xl flex items-center shrink-0">
+              <span className="text-[#4285F4]">Y</span>
+              <span className="text-[#EA4335]">a</span>
+              <span className="text-[#FBBC05]">t</span>
+              <span className="text-[#4285F4]">o</span>
+              <span className="text-[#34A853]">r</span>
+              <span className="text-[#EA4335]">i</span>
+            </span>
+            <span className="ml-2 truncate text-xs font-medium leading-none text-gray-500 dark:text-gray-400 sm:hidden">
+              学习通服务
+            </span>
+          </div>
+          <span className="mt-1 text-[10px] leading-none font-medium text-gray-500 dark:text-gray-400 sm:order-3 sm:mt-0 sm:ml-1.5 sm:translate-y-1">
+            v{appVersion}
+          </span>
+          <span className="hidden truncate text-sm font-medium leading-none text-gray-500 dark:text-gray-400 sm:order-2 sm:inline">
+            学习通服务
           </span>
         </div>
 
         {/* User Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-4 shrink-0">
           <Button 
             size="icon" 
             variant="ghost" 
             onClick={toggleDarkMode}
-            className="rounded-md hover:bg-gray-100 dark:hover:bg-[#2d2e30] h-9 w-9 text-gray-600 dark:text-gray-300"
+            className="rounded-md hover:bg-gray-100 dark:hover:bg-[#2d2e30] h-8 w-8 sm:h-9 sm:w-9 text-gray-600 dark:text-gray-300"
           >
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </Button>
 
           {/* User profile details */}
-          <div className="flex items-center gap-3 border border-[#c2c6d5] dark:border-[#444748] rounded-md pl-2 pr-3 py-1 bg-gray-50 dark:bg-[#252627]">
+          <div className="flex min-w-0 max-w-[172px] items-center gap-1.5 sm:max-w-none sm:gap-3 border border-[#c2c6d5] dark:border-[#444748] rounded-md pl-1.5 sm:pl-2 pr-1.5 sm:pr-3 py-1 bg-gray-50 dark:bg-[#252627]">
             {session.avatarUrl ? (
               <img 
                 src={session.avatarUrl} 
@@ -665,15 +710,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                 {session.displayName.substring(0, 1).toUpperCase()}
               </div>
             )}
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-semibold max-w-[100px] truncate">{session.displayName}</span>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[100px]">{session.user.username}</span>
+            <div className="flex min-w-0 flex-col text-left">
+              <span className="max-w-[76px] truncate text-xs font-semibold sm:max-w-[100px]">{session.displayName}</span>
+              <span className="hidden max-w-[100px] truncate text-[10px] text-gray-500 dark:text-gray-400 sm:block">{session.user.username}</span>
             </div>
             <Button
               size="icon"
               variant="ghost"
               onClick={onLogout}
-              className="h-6 w-6 rounded-md hover:bg-gray-200 dark:hover:bg-[#393a3b] text-gray-600 dark:text-gray-300 ml-1"
+              className="h-6 w-6 rounded-md hover:bg-gray-200 dark:hover:bg-[#393a3b] text-gray-600 dark:text-gray-300 sm:ml-1"
               title="退出登录"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -1181,8 +1226,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                   {tasks.length > 0 && (
                     <div className="flex gap-2 px-4 sm:px-6 py-3 border-b border-border/40 overflow-x-auto no-scrollbar">
                       {[
-                        { id: 'active', label: '进行中', count: tasks.filter(t => isActiveTaskStatus(t.status)).length },
-                        { id: 'completed', label: '已结束', count: tasks.filter(t => !isActiveTaskStatus(t.status)).length },
+                        { id: 'active', label: '进行中', count: taskCounts.active },
+                        { id: 'completed', label: '已结束', count: taskCounts.completed },
                       ].map(chip => (
                         <button
                           key={chip.id}
@@ -1245,8 +1290,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
         </div>
 
         {/* Right column / Task listing and Log streams */}
-        <div className="hidden lg:flex flex-col gap-6 min-w-0">
-          <Card className="bg-card shadow-sm border-none min-w-0 w-full overflow-hidden">
+        <div className="hidden lg:flex flex-col gap-6 min-w-0 self-start pt-[4.5rem]">
+          <Card className="bg-card shadow-sm border-none min-w-0 w-full overflow-hidden flex h-[calc(100vh-12rem)] min-h-[560px] max-h-[760px] flex-col sticky top-28">
             <CardHeader className="py-4 px-6 border-b border-border/50 flex flex-row items-start justify-between gap-3 space-y-0 min-w-0">
               <div className="min-w-0">
                 <CardTitle className="text-base font-semibold">任务列表</CardTitle>
@@ -1262,13 +1307,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                 <RefreshCw className={`w-4 h-4 ${tasksLoading ? 'animate-spin' : ''}`} />
               </Button>
             </CardHeader>
-            <CardContent className="p-0 min-w-0 w-full overflow-hidden">
+            <CardContent className="p-0 min-w-0 w-full overflow-hidden flex flex-1 flex-col">
               {/* Task Filter Chips */}
               {tasks.length > 0 && (
                 <div className="flex gap-2 px-6 py-3 border-b border-border/40 overflow-x-auto no-scrollbar">
                   {[
-                    { id: 'active', label: '进行中', count: tasks.filter(t => isActiveTaskStatus(t.status)).length },
-                    { id: 'completed', label: '已结束', count: tasks.filter(t => !isActiveTaskStatus(t.status)).length },
+                    { id: 'active', label: '进行中', count: taskCounts.active },
+                    { id: 'completed', label: '已结束', count: taskCounts.completed },
                   ].map(chip => (
                     <button
                       key={chip.id}
@@ -1292,23 +1337,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                 </div>
               )}
 
-              <div className="max-h-[550px] w-full min-w-0 overflow-y-auto">
+              <div className="min-h-0 flex-1 w-full min-w-0 overflow-y-auto">
                 {tasksLoading && tasks.length === 0 ? (
-                  <div className="text-center p-8 text-gray-500 text-sm">
-                    获取任务状态中...
+                  <div className="flex min-h-full flex-col items-center justify-center gap-4 p-10 text-center text-gray-500 text-sm">
+                    <svg className="google-spinner" viewBox="0 0 50 50">
+                      <circle className="path" cx="25" cy="25" r="20" fill="none" strokeWidth="4"></circle>
+                    </svg>
+                    <span>获取任务状态中...</span>
                   </div>
                 ) : tasks.length === 0 ? (
-                  <div className="text-center p-8 text-gray-500 text-xs">
-                    暂无历史任务，请先在课程列表选择课程并提交。
+                  <div className="flex min-h-full flex-col items-center justify-center gap-4 p-10 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
+                      <Activity className="h-7 w-7 stroke-[1.5]" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="text-sm font-semibold text-foreground">暂无历史任务</div>
+                      <div className="text-xs text-muted-foreground">选择课程后可提交任务</div>
+                    </div>
                   </div>
                 ) : filteredTasks.length === 0 ? (
-                  <div className="text-center p-12 text-gray-500 text-xs flex flex-col items-center justify-center gap-3">
-                    <div className="w-10 h-10 rounded bg-muted/50 flex items-center justify-center text-muted-foreground">
-                      <Activity className="w-6 h-6 stroke-[1.5]" />
+                  <div className="flex min-h-full flex-col items-center justify-center gap-4 p-10 text-center">
+                    <div className="w-12 h-12 rounded-md bg-muted/60 flex items-center justify-center text-muted-foreground">
+                      <Activity className="w-7 h-7 stroke-[1.5]" />
                     </div>
-                    <div>
-                      {taskFilter === 'active' ? '暂无进行中的任务。' : '暂无已结束的任务。'}
+                    <div className="space-y-1.5">
+                      <div className="text-sm font-semibold text-foreground">
+                        {taskFilter === 'active' ? '暂无进行中的任务' : '暂无已结束的任务'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {taskFilter === 'active' ? '已结束任务可切换查看' : '进行中任务可切换查看'}
+                      </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTaskFilter(taskFilter === 'active' ? 'completed' : 'active')}
+                      className="h-8 rounded-md px-3 text-xs"
+                    >
+                      {taskFilter === 'active' ? '查看已结束' : '查看进行中'}
+                    </Button>
                   </div>
                 ) : (
                   <div className="p-4 flex flex-col gap-4 min-w-0 w-full">
