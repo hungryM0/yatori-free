@@ -18,6 +18,21 @@
     <meta name="twitter:title" content="学习通服务 - Yatori" />
     <meta name="twitter:description" content="面向大学生的学习通服务。支持课程任务点管理、作业与考试提交处理，无需一直挂着浏览器" />
     <meta name="twitter:image" content="https://yatori.hungrym0.com/favicon.svg" />
+    <script>
+      (() => {
+        try {
+          const storedTheme = localStorage.getItem('yatori-theme');
+          const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const shouldUseDark = storedTheme === 'dark' || ((!storedTheme || storedTheme === 'system') && systemDark);
+
+          document.documentElement.classList.toggle('dark', shouldUseDark);
+          document.documentElement.style.colorScheme = shouldUseDark ? 'dark' : 'light';
+        } catch {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
     <title>学习通服务 - Yatori</title>
     <!-- Typography: Plus Jakarta Sans -->
     <link href="https://fonts.googleapis.com" rel="preconnect" />

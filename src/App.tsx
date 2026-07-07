@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
 import { getCurrentSession, getUserFacingErrorMessage, isAuthExitError, type AuthSession } from './lib/api';
@@ -17,10 +17,22 @@ function persistSession(session: AuthSession | null) {
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
+function keepAccountReferenceIfSameUser(prevSession: AuthSession | null, nextSession: AuthSession | null) {
+  if (
+    !prevSession?.account ||
+    !nextSession?.account ||
+    prevSession.account.id !== nextSession.account.id
+  ) {
+    return nextSession;
+  }
+
+  return {
+    ...nextSession,
+    account: prevSession.account,
+  };
+}
+
 function App() {
-  const [isRestoringSession, setIsRestoringSession] = useState(() => {
-    return sessionStorage.getItem(LOGOUT_SUPPRESSION_KEY) !== '1';
-  });
   const [session, setSession] = useState<AuthSession | null>(() => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
 
@@ -47,9 +59,11 @@ function App() {
 
     return null;
   });
+  const hadCachedSessionRef = useRef(session !== null);
 
   useEffect(() => {
     let cancelled = false;
+    const hadCachedSession = hadCachedSessionRef.current;
 
     if (sessionStorage.getItem(LOGOUT_SUPPRESSION_KEY) === '1') {
       return () => {
@@ -63,24 +77,23 @@ function App() {
           return;
         }
 
-        setSession(currentSession);
+        setSession((prevSession) => keepAccountReferenceIfSameUser(prevSession, currentSession));
         persistSession(currentSession);
       })
       .catch((error) => {
         if (isAuthExitError(error)) {
-          toast.error(getUserFacingErrorMessage(error, '登录已失效，请重新登录'));
+          if (hadCachedSession) {
+            toast.error(getUserFacingErrorMessage(error, '登录已失效，请重新登录'));
+          }
         } else {
           console.error('Failed to restore auth session', error);
-          toast.error(getUserFacingErrorMessage(error, '恢复登录状态失败，请重新登录'));
+          if (hadCachedSession) {
+            toast.error(getUserFacingErrorMessage(error, '恢复登录状态失败，请重新登录'));
+          }
         }
         if (!cancelled) {
           setSession(null);
           persistSession(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsRestoringSession(false);
         }
       });
 
@@ -89,21 +102,17 @@ function App() {
     };
   }, []);
 
-  const handleLoginSuccess = (newSession: AuthSession) => {
+  const handleLoginSuccess = useCallback((newSession: AuthSession) => {
     sessionStorage.removeItem(LOGOUT_SUPPRESSION_KEY);
     setSession(newSession);
     persistSession(newSession);
-  };
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     sessionStorage.setItem(LOGOUT_SUPPRESSION_KEY, '1');
     setSession(null);
     persistSession(null);
-  };
-
-  if (isRestoringSession) {
-    return <Toaster position="top-center" richColors />;
-  }
+  }, []);
 
   return (
     <>

@@ -38,6 +38,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTheme } from 'next-themes';
 
 interface CourseCheckboxProps {
   checked: boolean;
@@ -221,17 +222,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     form: readPersistedSettings(currentAccountId),
   }));
 
-  // Dark mode trigger
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   const toggleDarkMode = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
-    if (nextDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    setTheme(isDark ? 'light' : 'dark');
   };
 
   const settingsForm = persistedSettingsState.accountId === currentAccountId
