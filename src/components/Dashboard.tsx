@@ -186,6 +186,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     });
   }, [tasks, taskFilter]);
 
+  const hasActiveTasks = useMemo(() => {
+    return tasks.some(task => isActiveTaskStatus(task.status));
+  }, [tasks]);
+
   const courseNameByIdentifier = useMemo(() => {
     return courses.reduce<Record<string, string>>((map, course) => {
       const courseName = course.courseName?.trim();
@@ -291,8 +295,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     }
   }, [account, onLogout]);
 
-  const fetchTasks = useCallback(async (options: { showLoading?: boolean } = {}) => {
+  const fetchTasks = useCallback(async (options: { showLoading?: boolean; notifyOnError?: boolean } = {}) => {
     const showLoading = options.showLoading ?? true;
+    const notifyOnError = options.notifyOnError ?? showLoading;
     if (showLoading) {
       setTasksLoading(true);
     }
@@ -308,7 +313,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
         return;
       }
       console.error(error);
-      toast.error(getUserFacingErrorMessage(error, '加载任务失败，请稍后重试'));
+      if (notifyOnError) {
+        toast.error(getUserFacingErrorMessage(error, '加载任务失败，请稍后重试'));
+      }
     } finally {
       if (showLoading) {
         setTasksLoading(false);
@@ -557,6 +564,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     }
   };
 
+  const handleTaskUnauthorized = useCallback(() => {
+    notifyAuthExit();
+    onLogout();
+  }, [onLogout]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void fetchTasks();
@@ -584,17 +596,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     );
   }, [persistedSettingsState]);
 
-  // Handle stream list updates every 15s to keep task statuses up to date
+  // Keep the task list fresh only while unfinished tasks exist.
   useEffect(() => {
-    if (!account) {
+    if (!account || !hasActiveTasks) {
       return;
     }
 
     const timer = setInterval(() => {
-      void fetchTasks({ showLoading: false });
+      void fetchTasks({ showLoading: false, notifyOnError: false });
     }, 15000);
     return () => clearInterval(timer);
-  }, [account, fetchTasks]);
+  }, [account, fetchTasks, hasActiveTasks]);
 
   // Tab transition calculations (direction, distance, speed/duration)
   const tabsList = ['courses', 'sign', 'tasks', 'settings'];
@@ -1219,7 +1231,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                             key={task.id}
                             task={task}
                             courseNameByIdentifier={courseNameByIdentifier}
-                            onUnauthorized={onLogout}
+                            onUnauthorized={handleTaskUnauthorized}
                             onStopTask={handleStopTask}
                           />
                         ))}
@@ -1305,7 +1317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                         key={task.id}
                         task={task}
                         courseNameByIdentifier={courseNameByIdentifier}
-                        onUnauthorized={onLogout}
+                        onUnauthorized={handleTaskUnauthorized}
                         onStopTask={handleStopTask}
                       />
                     ))}

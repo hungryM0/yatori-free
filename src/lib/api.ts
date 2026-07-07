@@ -1,5 +1,4 @@
 export const API_BASE_URL = import.meta.env.DEV ? '/api' : 'https://yatori-api.hungrym0.com';
-export const TASK_PROGRESS_STREAM_EVENT = 'progress';
 
 export interface ApiError extends Error {
   status?: number;
@@ -157,12 +156,12 @@ export interface Task {
     account: string;
     coursesCustom: CoursesCustom;
   };
-  startedAt: string | null;
-  stoppedAt: string | null;
-  errorMessage: string;
+  startedAt?: string | null;
+  stoppedAt?: string | null;
+  errorMessage?: string;
   progress?: TaskProgress;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TaskProgress {
@@ -182,10 +181,6 @@ export interface TaskProgress {
 
 export function encodeApiPathSegment(value: string) {
   return encodeURIComponent(value);
-}
-
-export function getTaskProgressStreamUrl(taskId: string) {
-  return `${API_BASE_URL}/tasks/${encodeApiPathSegment(taskId)}/progress/stream`;
 }
 
 export function getErrorMessage(error: unknown, fallback = '请求失败') {

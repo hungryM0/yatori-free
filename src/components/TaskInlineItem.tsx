@@ -18,14 +18,11 @@ import {
 } from 'lucide-react';
 import {
   getTask,
-  getTaskProgressStreamUrl,
   getUserFacingErrorMessage,
   isAuthExitError,
-  TASK_PROGRESS_STREAM_EVENT,
   type Task,
   type TaskProgress,
 } from '@/lib/api';
-import { toast } from 'sonner';
 
 interface TaskInlineItemProps {
   task: Task;
@@ -125,7 +122,6 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
       }
     } catch (err) {
       if (isAuthExitError(err)) {
-        toast.error(getUserFacingErrorMessage(err, '登录已失效，请重新登录'));
         onUnauthorized?.();
         return;
       }
@@ -134,18 +130,9 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
     }
   });
 
-  const handleStreamMessage = useEffectEvent((rawData: string) => {
-    try {
-      const nextProgress = JSON.parse(rawData) as TaskProgress;
-      applyProgress(nextProgress);
-    } catch {
-      // Ignore malformed SSE chunks.
-    }
-  });
-
   useEffect(() => {
     const shouldFetchSnapshot = ['running', 'stopping', 'success', 'partial_success', 'failed'].includes(effectiveStatus);
-    const shouldUseStream = effectiveStatus === 'running'
+    const shouldPollProgress = effectiveStatus === 'running'
       || effectiveStatus === 'stopping';
     const snapshotTimer = shouldFetchSnapshot
       ? window.setTimeout(() => {
@@ -153,7 +140,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
         }, 0)
       : null;
 
-    if (!shouldUseStream) {
+    if (!shouldPollProgress) {
       return () => {
         if (snapshotTimer) {
           clearTimeout(snapshotTimer);
@@ -161,11 +148,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
       };
     }
 
-    let eventSource: EventSource | null = null;
     let pollTimer: ReturnType<typeof setInterval> | null = null;
-    let fallbackDelayTimer: ReturnType<typeof setTimeout> | null = null;
-    let connectTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
-    let streamOpened = false;
 
     const stopPolling = () => {
       if (pollTimer) {
@@ -185,74 +168,15 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
       }, 2500);
     };
 
-    const clearFallbackTimers = () => {
-      if (fallbackDelayTimer) {
-        clearTimeout(fallbackDelayTimer);
-        fallbackDelayTimer = null;
-      }
-      if (connectTimeoutTimer) {
-        clearTimeout(connectTimeoutTimer);
-        connectTimeoutTimer = null;
-      }
-    };
-
-    if (typeof window === 'undefined' || typeof window.EventSource === 'undefined') {
+    if (shouldPollProgress) {
       startPolling();
-      return () => {
-        if (snapshotTimer) {
-          clearTimeout(snapshotTimer);
-        }
-        stopPolling();
-        clearFallbackTimers();
-      };
     }
-
-    eventSource = new window.EventSource(getTaskProgressStreamUrl(task.id), {
-      withCredentials: true,
-    });
-
-    const onStreamReady = () => {
-      streamOpened = true;
-      clearFallbackTimers();
-      stopPolling();
-    };
-
-    const onStreamProgress = (event: MessageEvent<string>) => {
-      onStreamReady();
-      handleStreamMessage(event.data);
-    };
-
-    eventSource.addEventListener('open', onStreamReady);
-    eventSource.addEventListener(TASK_PROGRESS_STREAM_EVENT, onStreamProgress as EventListener);
-    eventSource.onmessage = onStreamProgress;
-    eventSource.onerror = () => {
-      if (!streamOpened) {
-        startPolling();
-        return;
-      }
-
-      if (fallbackDelayTimer) {
-        clearTimeout(fallbackDelayTimer);
-      }
-
-      fallbackDelayTimer = setTimeout(() => {
-        startPolling();
-      }, 8000);
-    };
-
-    connectTimeoutTimer = setTimeout(() => {
-      if (!streamOpened) {
-        startPolling();
-      }
-    }, 5000);
 
     return () => {
       if (snapshotTimer) {
         clearTimeout(snapshotTimer);
       }
-      clearFallbackTimers();
       stopPolling();
-      eventSource?.close();
     };
   }, [effectiveStatus, task.id]);
 
