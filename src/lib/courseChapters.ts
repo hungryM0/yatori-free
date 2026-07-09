@@ -1,4 +1,4 @@
-import type { Chapter } from './api';
+import type { Chapter, CourseDocument } from './api';
 
 export interface ChapterTaskMeta {
   total: number;
@@ -269,5 +269,38 @@ export function getChapterTaskMetas(chapters: Chapter[]) {
         finished: 0,
       },
     };
+  });
+}
+
+function normalizeMatchValue(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  return '';
+}
+
+export function getChapterDocuments(chapter: Chapter, documents: CourseDocument[] = []) {
+  const chapterId = normalizeMatchValue(chapter.id);
+  const chapterLabel = normalizeMatchValue(chapter.label);
+  const chapterName = normalizeMatchValue(chapter.name);
+
+  return documents.filter((document) => {
+    const documentChapterId = normalizeMatchValue(document.chapterId);
+    if (chapterId && documentChapterId && chapterId === documentChapterId) {
+      return true;
+    }
+
+    const documentChapterLabel = normalizeMatchValue(document.chapterLabel);
+    const documentChapterName = normalizeMatchValue(document.chapterName);
+
+    return Boolean(
+      (chapterLabel && documentChapterLabel && chapterLabel === documentChapterLabel)
+      || (chapterName && documentChapterName && chapterName === documentChapterName),
+    );
   });
 }

@@ -9,6 +9,7 @@ import { Progress } from './ui/progress';
 
 import {
   createTask,
+  getCourseDocumentDownloadUrl,
   getCourseDetails,
   getCourses,
   getErrorMessage,
@@ -18,8 +19,8 @@ import {
   isAuthExitError,
   stopTask,
 } from '@/lib/api';
-import { extractChapterItems, getChapterTaskMetas } from '@/lib/courseChapters';
-import type { AuthSession, Course, CourseDetails, Task, CoursesCustom } from '@/lib/api';
+import { extractChapterItems, getChapterDocuments, getChapterTaskMetas } from '@/lib/courseChapters';
+import type { AuthSession, Course, CourseDetails, CourseDocument, Task, CoursesCustom } from '@/lib/api';
 import { notifyAuthExit } from '@/lib/notifications';
 import { TaskInlineItem } from './TaskInlineItem';
 import { SignMonitor } from './SignMonitor';
@@ -36,6 +37,8 @@ import {
   Moon,
   ChevronDown,
   ChevronUp,
+  Download,
+  FileText,
   MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -110,6 +113,29 @@ function courseHasTaskPoints(course: Course) {
   }
 
   return (course.jobCount ?? 0) > 0 || (course.blockedPointCount ?? 0) > 0;
+}
+
+function formatFileSize(size?: number) {
+  if (typeof size !== 'number' || !Number.isFinite(size) || size <= 0) {
+    return '';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = size;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  const digits = value >= 10 || unitIndex === 0 ? 0 : 1;
+  return `${value.toFixed(digits)} ${units[unitIndex]}`;
+}
+
+function getCourseDocumentTypeLabel(document: CourseDocument) {
+  const extension = document.extension.trim().replace(/^\./, '').toUpperCase();
+  return extension || document.type.toUpperCase();
 }
 
 const TASK_SETTINGS_STORAGE_PREFIX = 'yatori-task-settings:';
@@ -943,45 +969,90 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                                 ) : courseDetailsMap[course.key] ? (
                                   <div className="space-y-2">
                                     {(() => {
-                                      const chapterItems = extractChapterItems(courseDetailsMap[course.key].chapters);
+                                      const courseDetails = courseDetailsMap[course.key];
+                                      const chapterItems = extractChapterItems(courseDetails.chapters);
                                       const chaptersWithTasks = getChapterTaskMetas(chapterItems)
                                         .filter(({ taskMeta }) => taskMeta.hasTaskPoints);
 
                                       return (
                                         <>
-                                    <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                                          章节大纲 ({chaptersWithTasks.length})
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-1">
+                                          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                            章节大纲 ({chaptersWithTasks.length})
+                                          </div>
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-1">
                                           {chaptersWithTasks.map(({ chapter: chap, taskMeta }) => {
                                             const isChapterDone = !taskMeta.isLocked && taskMeta.total > 0 && taskMeta.finished === taskMeta.total;
-                                          return (
-                                            <div 
-                                              key={chap.id} 
-                                              className="p-2.5 rounded border border-[#e1e3e4] dark:border-[#333537] bg-white dark:bg-[#1e1f20] flex items-center justify-between text-xs gap-3"
-                                            >
-                                              <div className="min-w-0 flex-1">
-                                                <span className="font-semibold text-gray-500 dark:text-gray-400 mr-1.5">{chap.label}</span>
-                                                <span className="font-medium text-[#191c1d] dark:text-[#e3e3e3]">{chap.name}</span>
-                                              </div>
-                                              <Badge
-                                                className={`border-none text-[10px] font-sans font-normal shrink-0 ${
-                                                    taskMeta.isLocked
-                                                      ? 'bg-[#f3f4f6] hover:bg-[#f3f4f6] text-[#5f6368] dark:bg-[#2a2b2d] dark:hover:bg-[#2a2b2d] dark:text-[#bdc1c6]'
-                                                  : isChapterDone
-                                                    ? 'bg-[#e6f4ea] hover:bg-[#e6f4ea] text-[#137333] dark:bg-[#12301f] dark:hover:bg-[#12301f] dark:text-[#81c995]'
-                                                    : 'bg-[#fef7e0] hover:bg-[#fef7e0] text-[#b06000] dark:bg-[#3b2a12] dark:hover:bg-[#3b2a12] dark:text-[#f6c26b]'
-                                                }`}
+                                            const chapterDocuments = getChapterDocuments(chap, courseDetails.documents);
+
+                                            return (
+                                              <div
+                                                key={chap.id}
+                                                className="p-2.5 rounded border border-[#e1e3e4] dark:border-[#333537] bg-white dark:bg-[#1e1f20] text-xs"
                                               >
+                                                <div className="flex items-start justify-between gap-3">
+                                                  <div className="min-w-0 flex-1">
+                                                    <span className="font-semibold text-gray-500 dark:text-gray-400 mr-1.5">{chap.label}</span>
+                                                    <span className="font-medium text-[#191c1d] dark:text-[#e3e3e3]">{chap.name}</span>
+                                                  </div>
+                                                  <Badge
+                                                    className={`border-none text-[10px] font-sans font-normal shrink-0 ${
+                                                      taskMeta.isLocked
+                                                        ? 'bg-[#f3f4f6] hover:bg-[#f3f4f6] text-[#5f6368] dark:bg-[#2a2b2d] dark:hover:bg-[#2a2b2d] dark:text-[#bdc1c6]'
+                                                        : isChapterDone
+                                                          ? 'bg-[#e6f4ea] hover:bg-[#e6f4ea] text-[#137333] dark:bg-[#12301f] dark:hover:bg-[#12301f] dark:text-[#81c995]'
+                                                          : 'bg-[#fef7e0] hover:bg-[#fef7e0] text-[#b06000] dark:bg-[#3b2a12] dark:hover:bg-[#3b2a12] dark:text-[#f6c26b]'
+                                                    }`}
+                                                  >
                                                     {taskMeta.isLocked ? `未开放任务点: ${taskMeta.total}` : `任务点: ${taskMeta.finished}/${taskMeta.total}`}
-                                              </Badge>
-                                            </div>
-                                          );
-                                        })}
+                                                  </Badge>
+                                                </div>
+
+                                                {account?.id && chapterDocuments.length > 0 && (
+                                                  <div className="mt-2 space-y-1.5 border-t border-[#edf0f2] dark:border-[#333537] pt-2">
+                                                    {chapterDocuments.map((document) => {
+                                                      const fileSize = formatFileSize(document.size);
+                                                      return (
+                                                        <div
+                                                          key={document.id}
+                                                          className="flex items-center gap-2 rounded bg-[#f8fafd] dark:bg-[#252628] px-2 py-1.5"
+                                                        >
+                                                          <FileText className="h-3.5 w-3.5 shrink-0 text-[#5f6368] dark:text-[#bdc1c6]" />
+                                                          <div className="min-w-0 flex-1">
+                                                            <div className="truncate font-medium text-[#191c1d] dark:text-[#e3e3e3]">
+                                                              {document.name}
+                                                            </div>
+                                                            <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                                              {getCourseDocumentTypeLabel(document)}
+                                                              {fileSize ? ` · ${fileSize}` : ''}
+                                                            </div>
+                                                          </div>
+                                                          <Button
+                                                            asChild
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 shrink-0 rounded p-0 text-[#4285F4] dark:text-[#adc6ff]"
+                                                          >
+                                                            <a
+                                                              href={getCourseDocumentDownloadUrl(account.id, course.key, document.id)}
+                                                              target="_blank"
+                                                              rel="noreferrer"
+                                                              aria-label={`下载 ${document.name}`}
+                                                            >
+                                                              <Download className="h-3.5 w-3.5" />
+                                                            </a>
+                                                          </Button>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
                                           {chaptersWithTasks.length === 0 && (
                                             <div className="text-gray-500 text-xs py-4 text-center col-span-2">该课程没有任务点</div>
                                           )}
-                                    </div>
+                                          </div>
                                         </>
                                       );
                                     })()}

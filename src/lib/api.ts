@@ -112,9 +112,22 @@ export interface Chapter {
   isOpen?: boolean;
 }
 
+export interface CourseDocument {
+  id: string;
+  name: string;
+  type: 'word' | 'ppt' | 'pdf';
+  extension: string;
+  chapterId: number;
+  chapterLabel?: string;
+  chapterName?: string;
+  downloadUrl: string;
+  size?: number;
+}
+
 export interface CourseDetails {
   course: Course;
   chapters?: unknown;
+  documents?: CourseDocument[];
   works?: unknown[];
   exams?: unknown[];
   blockedChapterCount?: number;
@@ -362,6 +375,10 @@ export function getCourseDetails(accountId: string, classId: string) {
   return apiRequest<CourseDetails>(
     `/accounts/${encodeApiPathSegment(accountId)}/courses/${encodeApiPathSegment(classId)}`,
   );
+}
+
+export function getCourseDocumentDownloadUrl(accountId: string, classId: string, documentId: string) {
+  return `${API_BASE_URL}/accounts/${encodeApiPathSegment(accountId)}/courses/${encodeApiPathSegment(classId)}/documents/${encodeApiPathSegment(documentId)}/download`;
 }
 
 export function getTasks() {
