@@ -86,19 +86,34 @@ interface SettingsFormState {
   examAutoSubmit: 0 | 1 | 2;
 }
 
-interface PersistedSettingsState {
-  accountId: string | null;
-  form: SettingsFormState;
+interface PersistedSettingsFormState {
+  hideEmptyTaskCourses: boolean;
+  doChapterTest: boolean;
 }
 
-const DEFAULT_SETTINGS = {
+interface TaskExecutionSettingsState {
+  doWork: boolean;
+  workAutoSubmit: 0 | 1 | 2;
+  doExam: boolean;
+  examAutoSubmit: 0 | 1 | 2;
+}
+
+interface PersistedSettingsState {
+  accountId: string | null;
+  form: PersistedSettingsFormState;
+}
+
+const DEFAULT_PERSISTED_SETTINGS: PersistedSettingsFormState = {
   hideEmptyTaskCourses: true,
   doChapterTest: true,
+};
+
+const DEFAULT_TASK_EXECUTION_SETTINGS: TaskExecutionSettingsState = {
   doWork: false,
   workAutoSubmit: 0,
   doExam: false,
   examAutoSubmit: 0,
-} as const;
+};
 
 const ACTIVE_TASK_STATUSES = ['pending', 'running', 'stopping'] as const;
 
@@ -156,51 +171,40 @@ function getTaskSettingsStorageKey(accountId: string) {
   return `${TASK_SETTINGS_STORAGE_PREFIX}${accountId}`;
 }
 
-function createDefaultSettingsFormState(): SettingsFormState {
-  return { ...DEFAULT_SETTINGS };
+function createDefaultPersistedSettingsFormState(): PersistedSettingsFormState {
+  return { ...DEFAULT_PERSISTED_SETTINGS };
 }
 
-function readPersistedSettings(accountId: string | null | undefined): SettingsFormState {
+function createDefaultTaskExecutionSettingsState(): TaskExecutionSettingsState {
+  return { ...DEFAULT_TASK_EXECUTION_SETTINGS };
+}
+
+function readPersistedSettings(accountId: string | null | undefined): PersistedSettingsFormState {
   if (!accountId) {
-    return createDefaultSettingsFormState();
+    return createDefaultPersistedSettingsFormState();
   }
 
   const raw = localStorage.getItem(getTaskSettingsStorageKey(accountId));
   if (!raw) {
-    return createDefaultSettingsFormState();
+    return createDefaultPersistedSettingsFormState();
   }
 
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') {
-      return createDefaultSettingsFormState();
+      return createDefaultPersistedSettingsFormState();
     }
 
-    const settings = parsed as Partial<Omit<SettingsFormState, 'workAutoSubmit' | 'examAutoSubmit'>> & {
-      workAutoSubmit?: unknown;
-      examAutoSubmit?: unknown;
-    };
-    const rawWorkAutoSubmit = settings.workAutoSubmit;
-    const rawExamAutoSubmit = settings.examAutoSubmit;
-    const workAutoSubmit = rawWorkAutoSubmit === 1 || rawWorkAutoSubmit === 2 || rawWorkAutoSubmit === true
-        ? rawWorkAutoSubmit === 2 ? 2 : 1
-        : 0;
-    const examAutoSubmit = rawExamAutoSubmit === 1 || rawExamAutoSubmit === 2 || rawExamAutoSubmit === true
-        ? rawExamAutoSubmit === 2 ? 2 : 1
-        : 0;
+    const settings = parsed as Partial<PersistedSettingsFormState>;
 
     return {
       hideEmptyTaskCourses: settings.hideEmptyTaskCourses !== false,
       doChapterTest: settings.doChapterTest !== false,
-      doWork: settings.doWork === true,
-      workAutoSubmit: settings.doWork === true ? workAutoSubmit : 0,
-      doExam: settings.doExam === true,
-      examAutoSubmit: settings.doExam === true ? examAutoSubmit : 0,
     };
   } catch (error) {
     console.error('Failed to parse task settings', error);
     localStorage.removeItem(getTaskSettingsStorageKey(accountId));
-    return createDefaultSettingsFormState();
+    return createDefaultPersistedSettingsFormState();
   }
 }
 
@@ -280,6 +284,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     accountId: currentAccountId,
     form: readPersistedSettings(currentAccountId),
   }));
+  const [taskExecutionSettings, setTaskExecutionSettings] = useState<TaskExecutionSettingsState>(
+    createDefaultTaskExecutionSettingsState,
+  );
 
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
@@ -289,9 +296,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     localStorage.removeItem(THEME_STORAGE_KEY);
   };
 
-  const settingsForm = persistedSettingsState.accountId === currentAccountId
+  const persistedSettingsForm = persistedSettingsState.accountId === currentAccountId
     ? persistedSettingsState.form
     : readPersistedSettings(currentAccountId);
+  const settingsForm: SettingsFormState = {
+    ...persistedSettingsForm,
+    ...taskExecutionSettings,
+  };
 
   const {
     hideEmptyTaskCourses,
@@ -547,18 +558,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   };
 
   const updateSettingSwitch = (key: keyof SettingsFormState, checked: boolean) => {
-    const nextForm = {
-      ...settingsForm,
-      [key]: checked,
-    };
-
-    if (key === 'doWork' && !checked) {
-      nextForm.workAutoSubmit = 0;
+    if (key === 'doWork' || key === 'doExam') {
+      setTaskExecutionSettings((previous) => {
+        const next = { ...previous, [key]: checked };
+        if (key === 'doWork' && !checked) {
+          next.workAutoSubmit = 0;
+        }
+        if (key === 'doExam' && !checked) {
+          next.examAutoSubmit = 0;
+        }
+        return next;
+      });
+      return;
     }
 
-    if (key === 'doExam' && !checked) {
-      nextForm.examAutoSubmit = 0;
-    }
+    const nextForm = { ...persistedSettingsForm, [key]: checked };
 
     if (key === 'hideEmptyTaskCourses' && checked) {
       const visibleKeys = new Set(courses.filter(courseHasTaskPoints).map((course) => course.key));
@@ -580,23 +594,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   };
 
   const updateWorkAutoSubmit = (value: SettingsFormState['workAutoSubmit']) => {
-    setPersistedSettingsState({
-      accountId: currentAccountId,
-      form: {
-        ...settingsForm,
-        workAutoSubmit: value,
-      },
-    });
+    setTaskExecutionSettings((previous) => ({ ...previous, workAutoSubmit: value }));
   };
 
   const updateExamAutoSubmit = (value: SettingsFormState['examAutoSubmit']) => {
-    setPersistedSettingsState({
-      accountId: currentAccountId,
-      form: {
-        ...settingsForm,
-        examAutoSubmit: value,
-      },
-    });
+    setTaskExecutionSettings((previous) => ({ ...previous, examAutoSubmit: value }));
   };
 
   const handleStopTask = async (taskId: string) => {
