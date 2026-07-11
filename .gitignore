@@ -26,5 +26,4 @@ dist-ssr
 *.sw?
 *.code-workspace
 AGENTS.md
-DESIGN.md
 .tmp/
