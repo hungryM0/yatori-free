@@ -339,6 +339,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     [courses, studyIncrementCourseKey],
   );
 
+  const studyIncrementCourseDetails = studyIncrementCourseKey
+    ? courseDetailsMap[studyIncrementCourseKey]
+    : undefined;
+
   const fetchCourses = useCallback(async () => {
     if (!account) return;
     setCoursesLoading(true);
@@ -478,6 +482,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     setSelectedCourses(new Set());
   };
 
+  const openStudyIncrementSettings = (classId: string) => {
+    setStudyIncrementCourseKey(classId);
+    if (!courseDetailsMap[classId] && !loadingDetails[classId]) {
+      void loadCourseDetail(classId);
+    }
+  };
+
   const getSelectedProcessingCourses = (courseKeys: string[]) => {
     const courseKeySet = new Set(courseKeys);
     return courses.filter((course) => course.processing && courseKeySet.has(course.key));
@@ -517,11 +528,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
       excludeCourses: [],
       coursesSettings: includeCoursesList.flatMap((classId) => {
         const studyIncrement = studyIncrements[classId] ?? DEFAULT_STUDY_INCREMENT;
-        if (studyIncrement.visitCount === 0 && studyIncrement.studyMinutes === 0) {
+        const visitCount = studyIncrement.visitCount ?? 0;
+        const studyMinutes = studyIncrement.studyMinutes ?? 0;
+        if (visitCount === 0 && studyMinutes === 0) {
           return [];
         }
 
-        return [{ classId, studyIncrement }];
+        return [{ classId, studyIncrement: { visitCount, studyMinutes } }];
       }),
     });
 
@@ -539,6 +552,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
       void fetchTasks({ showLoading: false });
       void fetchCourses();
       setSelectedCourses(new Set());
+      setStudyIncrements((previous) => {
+        const next = { ...previous };
+        includeCoursesList.forEach((classId) => delete next[classId]);
+        return next;
+      });
     } catch (error) {
       if (isAuthExitError(error)) {
         notifyAuthExit(getUserFacingErrorMessage(error, '登录已失效，请重新登录'));
@@ -893,10 +911,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                         const isExpanded = expandedCourses.has(course.key);
                         const isSelected = selectedCourses.has(course.key);
                         const studyIncrement = studyIncrements[course.key] ?? DEFAULT_STUDY_INCREMENT;
-                        const hasStudyIncrement = studyIncrement.visitCount > 0 || studyIncrement.studyMinutes > 0;
+                        const studyVisitCount = studyIncrement.visitCount ?? 0;
+                        const studyMinutes = studyIncrement.studyMinutes ?? 0;
+                        const hasStudyIncrement = studyVisitCount > 0 || studyMinutes > 0;
                         const studyIncrementSummary = [
-                          studyIncrement.visitCount > 0 ? `+${studyIncrement.visitCount}次` : null,
-                          studyIncrement.studyMinutes > 0 ? `+${studyIncrement.studyMinutes}分钟` : null,
+                          studyVisitCount > 0 ? `+${studyVisitCount}次` : null,
+                          studyMinutes > 0 ? `+${studyMinutes}分钟` : null,
                         ].filter(Boolean).join(' ');
 
                         return (
@@ -952,7 +972,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => setStudyIncrementCourseKey(course.key)}
+                                    onClick={() => openStudyIncrementSettings(course.key)}
                                     className={`h-8 rounded text-xs ${
                                       hasStudyIncrement
                                         ? 'gap-1 bg-primary/10 px-2 text-primary hover:bg-primary/15 hover:text-primary'
@@ -1553,6 +1573,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
           if (!open) setStudyIncrementCourseKey(null);
         }}
         course={studyIncrementCourse}
+        studyStats={studyIncrementCourseDetails?.studyStats}
+        statsLoaded={studyIncrementCourseDetails !== undefined}
+        loadingStats={studyIncrementCourseKey !== null && loadingDetails[studyIncrementCourseKey] === true}
         values={studyIncrements}
         onSave={saveStudyIncrement}
       />

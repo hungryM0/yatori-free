@@ -32,6 +32,9 @@ function formatDelta(value: number, unit: string) {
 function StudyMetric({ icon: Icon, label, metric, unit }: StudyMetricProps) {
   const increment = metric.current - metric.baseline;
   const targetIncrement = metric.target - metric.baseline;
+  const statusMessage = ['failed', 'skipped'].includes(metric.status)
+    ? metric.message.trim()
+    : '';
 
   return (
     <div className="rounded-md border border-border/50 bg-card/60 p-2.5">
@@ -56,6 +59,11 @@ function StudyMetric({ icon: Icon, label, metric, unit }: StudyMetricProps) {
       <div className="mt-1 text-[10.5px] text-muted-foreground tabular-nums">
         当前 {formatValue(metric.current, unit)} · 初始 {formatValue(metric.baseline, unit)}
       </div>
+      {statusMessage && (
+        <p className="mt-1.5 text-[10.5px] leading-relaxed text-destructive">
+          {statusMessage}
+        </p>
+      )}
     </div>
   );
 }

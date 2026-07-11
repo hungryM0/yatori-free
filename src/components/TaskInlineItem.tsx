@@ -100,7 +100,12 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
   const [progressErrorMessage, setProgressErrorMessage] = useState('');
   const latestProgressRequestRef = useRef(0);
 
-  const effectiveStatus = progress && isTaskStatus(progress.status) ? progress.status : task.status;
+  const taskStatusIsTerminal = ['stopped', 'success', 'partial_success', 'failed'].includes(task.status);
+  const effectiveStatus = taskStatusIsTerminal
+    ? task.status
+    : progress && isTaskStatus(progress.status)
+      ? progress.status
+      : task.status;
 
   const applyProgress = useEffectEvent((nextProgress: TaskProgress) => {
     if (nextProgress.taskId !== task.id) {
@@ -148,7 +153,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
   });
 
   useEffect(() => {
-    const shouldFetchSnapshot = ['running', 'stopping', 'success', 'partial_success', 'failed'].includes(effectiveStatus);
+    const shouldFetchSnapshot = ['running', 'stopping', 'stopped', 'success', 'partial_success', 'failed'].includes(effectiveStatus);
     const shouldPollProgress = effectiveStatus === 'running'
       || effectiveStatus === 'stopping';
     const snapshotTimer = shouldFetchSnapshot
@@ -256,7 +261,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
   };
 
   const statusInfo = getStatusDisplay(effectiveStatus);
-  const snapshotStatuses: Task['status'][] = ['running', 'stopping', 'success', 'partial_success', 'failed'];
+  const snapshotStatuses: Task['status'][] = ['running', 'stopping', 'stopped', 'success', 'partial_success', 'failed'];
   const stoppableStatuses: Task['status'][] = ['pending', 'running', 'stopping'];
   const hasUnitCounts = typeof progress?.totalUnits === 'number' && typeof progress?.completedUnits === 'number';
   const totalUnits = progress?.totalUnits;
@@ -465,11 +470,19 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
                 <span>学习目标:</span>
                 {studyIncrementSettings.map((setting) => {
                   const courseName = courseNameByIdentifier[setting.classId] ?? setting.classId;
+                  const increments = [
+                    (setting.studyIncrement.visitCount ?? 0) > 0
+                      ? `次数 +${setting.studyIncrement.visitCount}`
+                      : null,
+                    (setting.studyIncrement.studyMinutes ?? 0) > 0
+                      ? `时长 +${setting.studyIncrement.studyMinutes} 分钟`
+                      : null,
+                  ].filter(Boolean).join(' · ');
                   return (
                     <div key={setting.classId} className="flex justify-between gap-2 text-foreground">
                       <span className="truncate" title={courseName}>{courseName}</span>
                       <span className="shrink-0 font-semibold tabular-nums">
-                        次数 +{setting.studyIncrement.visitCount} · 时长 +{setting.studyIncrement.studyMinutes} 分钟
+                        {increments || '未设置'}
                       </span>
                     </div>
                   );

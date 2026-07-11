@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Minus, Plus, SlidersHorizontal } from 'lucide-react';
+import { AlertCircle, Clock3, Eye, LoaderCircle, Minus, Plus, SlidersHorizontal } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -10,12 +10,15 @@ import {
 } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import type { Course, StudyIncrement } from '@/lib/api';
+import type { Course, StudyIncrement, StudyStats } from '@/lib/api';
 
 interface StudyIncrementSettingsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   course: Course | null;
+  studyStats?: StudyStats;
+  statsLoaded: boolean;
+  loadingStats: boolean;
   values: Record<string, StudyIncrement>;
   onSave: (classId: string, value: StudyIncrement) => void;
 }
@@ -119,6 +122,9 @@ export function StudyIncrementSettings({
   open,
   onOpenChange,
   course,
+  studyStats,
+  statsLoaded,
+  loadingStats,
   values,
   onSave,
 }: StudyIncrementSettingsProps) {
@@ -129,6 +135,9 @@ export function StudyIncrementSettings({
       key={course.key}
       course={course}
       initialValue={values[course.key] ?? { visitCount: 0, studyMinutes: 0 }}
+      studyStats={studyStats}
+      statsLoaded={statsLoaded}
+      loadingStats={loadingStats}
       onOpenChange={onOpenChange}
       onSave={onSave}
     />
@@ -138,14 +147,27 @@ export function StudyIncrementSettings({
 interface StudyIncrementDialogProps {
   course: Course;
   initialValue: StudyIncrement;
+  studyStats?: StudyStats;
+  statsLoaded: boolean;
+  loadingStats: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (classId: string, value: StudyIncrement) => void;
 }
 
-function StudyIncrementDialog({ course, initialValue, onOpenChange, onSave }: StudyIncrementDialogProps) {
+function StudyIncrementDialog({
+  course,
+  initialValue,
+  studyStats,
+  statsLoaded,
+  loadingStats,
+  onOpenChange,
+  onSave,
+}: StudyIncrementDialogProps) {
+  const initialVisitCount = initialValue.visitCount ?? 0;
+  const initialStudyMinutes = initialValue.studyMinutes ?? 0;
   const [draft, setDraft] = useState({
-    visitCount: initialValue.visitCount === 0 ? '' : String(initialValue.visitCount),
-    studyMinutes: initialValue.studyMinutes === 0 ? '' : String(initialValue.studyMinutes),
+    visitCount: initialVisitCount === 0 ? '' : String(initialVisitCount),
+    studyMinutes: initialStudyMinutes === 0 ? '' : String(initialStudyMinutes),
   });
 
   const updateDraft = (field: keyof StudyIncrement, value: string) => {
@@ -174,6 +196,45 @@ function StudyIncrementDialog({ course, initialValue, onOpenChange, onSave }: St
         </DialogHeader>
 
         <div className="grid grid-cols-1 gap-3 overflow-y-auto px-4 py-4 sm:px-5">
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+            {loadingStats ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                正在读取当前学习数据
+              </div>
+            ) : studyStats?.available ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Eye className="h-3.5 w-3.5" />
+                    当前学习次数
+                  </span>
+                  <div className="text-lg font-semibold tabular-nums text-foreground">
+                    {studyStats.visitCount ?? '--'}<span className="ml-1 text-xs font-normal text-muted-foreground">次</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    当前学习时长
+                  </span>
+                  <div className="text-lg font-semibold tabular-nums text-foreground">
+                    {studyStats.studyMinutes ?? '--'}<span className="ml-1 text-xs font-normal text-muted-foreground">分钟</span>
+                  </div>
+                </div>
+              </div>
+            ) : statsLoaded ? (
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{studyStats?.message || '当前学习数据不可用'}</span>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>当前学习数据读取失败</span>
+              </div>
+            )}
+          </div>
           <StepperField
             id={`study-visit-${course.key}`}
             label="学习次数"
