@@ -10,6 +10,7 @@
 ![Vite](https://img.shields.io/badge/Vite-8.1.0-646CFF.svg?style=flat-square&logo=vite&logoColor=white)
 ![shadcn/ui](https://img.shields.io/badge/shadcn/ui-4.11.0-000000.svg?style=flat-square&logo=shadcnui&logoColor=white)
 
+[![部署状态](https://github.com/yatori-dev/yatori-free/actions/workflows/deploy.yml/badge.svg)](https://github.com/yatori-dev/yatori-free/actions/workflows/deploy.yml)
 ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-orange.svg?style=flat-square&logo=cloudflare&logoColor=white)
 ![Google Style](https://img.shields.io/badge/Google-Style-red.svg?style=flat-square&logo=google&logoColor=white)
 ![Material Design](https://img.shields.io/badge/Material_Design-3-blue.svg?style=flat-square&logo=materialdesign&logoColor=white)
@@ -58,6 +59,7 @@
 - ![Go 1.26.3](https://img.shields.io/badge/Go-1.26.3-blue.svg?style=flat-square&logo=go&logoColor=white)
 - ![net/http](https://img.shields.io/badge/net/http-1.26.3-blue.svg?style=flat-square&logo=go&logoColor=white)
 - ![SQLite](https://img.shields.io/badge/SQLite-3-yellow.svg?style=flat-square&logo=sqlite&logoColor=white)
+- ![systemd](https://img.shields.io/badge/systemd-257-red.svg?style=flat-square&logo=systemd&logoColor=white)
 - ![Cloudflare Tunnel](https://img.shields.io/badge/Cloudflare%20Tunnel-2026.6.1-orange.svg?style=flat-square&logo=cloudflare&logoColor=white)
 - ![yatori-go-core](https://img.shields.io/badge/yatori--go--core-2.0.4.9-green.svg?style=flat-square&logoColor=white)
 
