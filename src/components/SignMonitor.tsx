@@ -10,6 +10,8 @@ import {
   isAuthExitError,
 } from '@/lib/api';
 import type { SignLog } from '@/lib/api';
+import type { SignLogsResponseData } from '@/lib/api';
+import { getSessionCached, readSessionCache, writeSessionCache } from '@/lib/sessionCache';
 import {
   Play,
   Square,
@@ -22,6 +24,11 @@ import {
 import { toast } from 'sonner';
 
 const SIGN_MONITOR_EXPIRES_STORAGE_PREFIX = 'yatori-sign-monitor-expires-at:';
+const SIGN_LOGS_CACHE_PREFIX = 'sign-logs:';
+
+function getSignLogsCacheKey(accountId: string, limit: number, offset: number) {
+  return `${SIGN_LOGS_CACHE_PREFIX}${accountId}:${limit}:${offset}`;
+}
 
 function getSignMonitorExpiresStorageKey(accountId: string) {
   return `${SIGN_MONITOR_EXPIRES_STORAGE_PREFIX}${accountId}`;
@@ -79,16 +86,19 @@ export const SignMonitor: React.FC<SignMonitorProps> = ({
   accountId,
   onUnauthorized,
 }) => {
-  const [logs, setLogs] = useState<SignLog[]>([]);
-  const [logsTotal, setLogsTotal] = useState(0);
-  const [logsLoading, setLogsLoading] = useState(false);
+  const logsLimit = 10;
+  const initialLogs = readSessionCache<SignLogsResponseData>(
+    getSignLogsCacheKey(accountId, logsLimit, 0),
+  );
+  const [logs, setLogs] = useState<SignLog[]>(() => initialLogs?.logs ?? []);
+  const [logsTotal, setLogsTotal] = useState(() => initialLogs?.total ?? 0);
+  const [logsLoading, setLogsLoading] = useState(() => initialLogs === undefined);
   const [toggleAction, setToggleAction] = useState<'start' | 'stop' | null>(null);
   const [monitorState, setMonitorState] = useState(() => ({
     accountId,
     expiresAt: readStoredMonitorExpiresAt(accountId),
   }));
   const [now, setNow] = useState(() => Date.now());
-  const [logsLimit] = useState(10);
   const [logsPage, setLogsPage] = useState(() => ({ accountId, offset: 0 }));
   const logsOffset = logsPage.accountId === accountId ? logsPage.offset : 0;
   const monitorExpiresAt = monitorState.accountId === accountId
@@ -98,12 +108,20 @@ export const SignMonitor: React.FC<SignMonitorProps> = ({
   const monitorStarted = monitorRemainingMs > 0;
   const nextMonitorAction = monitorStarted ? 'stop' : 'start';
 
-  const fetchLogs = useCallback(async (showLoading = true) => {
+  const fetchLogs = useCallback(async (showLoading = true, useCache = true) => {
     if (showLoading) setLogsLoading(true);
     try {
-      const response = await getSignLogs(accountId, { limit: logsLimit, offset: logsOffset });
-      setLogs(response.data.logs);
-      setLogsTotal(response.data.total);
+      const cacheKey = getSignLogsCacheKey(accountId, logsLimit, logsOffset);
+      const loadLogs = async () => {
+        const response = await getSignLogs(accountId, { limit: logsLimit, offset: logsOffset });
+        return response.data;
+      };
+      const data = useCache
+        ? await getSessionCached(cacheKey, loadLogs)
+        : await loadLogs();
+      writeSessionCache(cacheKey, data);
+      setLogs(data.logs);
+      setLogsTotal(data.total);
     } catch (error) {
       if (isAuthExitError(error)) {
         toast.error(getUserFacingErrorMessage(error, '登录已失效，请重新登录'));
@@ -160,7 +178,7 @@ export const SignMonitor: React.FC<SignMonitorProps> = ({
         setMonitorState({ accountId, expiresAt: null });
         toast.success('签到监测已停止');
       }
-      void fetchLogs(false);
+      void fetchLogs(false, false);
     } catch (error) {
       if (isAuthExitError(error)) {
         toast.error(getUserFacingErrorMessage(error, '登录已失效，请重新登录'));
@@ -233,7 +251,7 @@ export const SignMonitor: React.FC<SignMonitorProps> = ({
             size="icon"
             variant="ghost"
             disabled={logsLoading}
-            onClick={() => void fetchLogs(true)}
+            onClick={() => void fetchLogs(true, false)}
             className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#2d2e30] shrink-0"
             title="刷新日志"
           >

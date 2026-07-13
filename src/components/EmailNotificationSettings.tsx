@@ -13,6 +13,7 @@ import {
 } from '@/lib/api';
 import type { EmailNotificationSettings as EmailNotificationSettingsData } from '@/lib/api';
 import { notifyAuthExit } from '@/lib/notifications';
+import { getSessionCached, readSessionCache, writeSessionCache } from '@/lib/sessionCache';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -23,12 +24,14 @@ interface EmailNotificationSettingsProps {
 }
 
 type PendingAction = 'load' | 'send' | 'confirm' | 'toggle' | 'delete' | null;
+const EMAIL_NOTIFICATION_CACHE_KEY = 'email-notification-settings';
 
 export function EmailNotificationSettings({ onUnauthorized }: EmailNotificationSettingsProps) {
-  const [settings, setSettings] = useState<EmailNotificationSettingsData | null>(null);
-  const [email, setEmail] = useState('');
+  const initialSettings = readSessionCache<EmailNotificationSettingsData>(EMAIL_NOTIFICATION_CACHE_KEY);
+  const [settings, setSettings] = useState<EmailNotificationSettingsData | null>(() => initialSettings ?? null);
+  const [email, setEmail] = useState(() => initialSettings?.pendingEmail || initialSettings?.email || '');
   const [verificationCode, setVerificationCode] = useState('');
-  const [pendingAction, setPendingAction] = useState<PendingAction>('load');
+  const [pendingAction, setPendingAction] = useState<PendingAction>(() => initialSettings ? null : 'load');
 
   const handleError = useCallback((error: unknown, fallback: string) => {
     if (isAuthExitError(error)) {
@@ -41,6 +44,7 @@ export function EmailNotificationSettings({ onUnauthorized }: EmailNotificationS
   }, [onUnauthorized]);
 
   const applySettings = useCallback((next: EmailNotificationSettingsData) => {
+    writeSessionCache(EMAIL_NOTIFICATION_CACHE_KEY, next);
     setSettings(next);
     setEmail(next.pendingEmail || next.email);
   }, []);
@@ -48,10 +52,13 @@ export function EmailNotificationSettings({ onUnauthorized }: EmailNotificationS
   useEffect(() => {
     let cancelled = false;
 
-    getEmailNotificationSettings()
-      .then((response) => {
+    getSessionCached(EMAIL_NOTIFICATION_CACHE_KEY, async () => {
+      const response = await getEmailNotificationSettings();
+      return response.data;
+    })
+      .then((nextSettings) => {
         if (!cancelled) {
-          applySettings(response.data);
+          applySettings(nextSettings);
         }
       })
       .catch((error) => {
@@ -125,14 +132,19 @@ export function EmailNotificationSettings({ onUnauthorized }: EmailNotificationS
     setPendingAction('delete');
     try {
       await deleteEmailNotification();
-      setSettings((previous) => previous ? {
-        ...previous,
-        email: '',
-        pendingEmail: '',
-        verified: false,
-        enabled: false,
-        verifiedAt: null,
-      } : previous);
+      setSettings((previous) => {
+        if (!previous) return previous;
+        const nextSettings = {
+          ...previous,
+          email: '',
+          pendingEmail: '',
+          verified: false,
+          enabled: false,
+          verifiedAt: null,
+        };
+        writeSessionCache(EMAIL_NOTIFICATION_CACHE_KEY, nextSettings);
+        return nextSettings;
+      });
       setEmail('');
       setVerificationCode('');
       toast.success('邮箱通知设置已删除');

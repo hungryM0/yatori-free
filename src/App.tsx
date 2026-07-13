@@ -5,6 +5,7 @@ import { getCurrentSession, getUserFacingErrorMessage, isAuthExitError, logout, 
 import { Toaster } from '@/components/ui/sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { clearSessionCache } from '@/lib/sessionCache';
 
 const LOGOUT_SUPPRESSION_KEY = 'yatori-auth-logout-suppressed';
 
@@ -83,6 +84,7 @@ function App() {
   }, []);
 
   const handleLoginSuccess = useCallback((newSession: AuthSession) => {
+    clearSessionCache();
     sessionStorage.removeItem(LOGOUT_SUPPRESSION_KEY);
     setSession(newSession);
     setIsRestoringSession(false);
@@ -90,6 +92,7 @@ function App() {
 
   const handleLogout = useCallback(async () => {
     sessionStorage.setItem(LOGOUT_SUPPRESSION_KEY, '1');
+    clearSessionCache();
 
     try {
       await logout();
