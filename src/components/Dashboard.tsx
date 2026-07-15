@@ -22,6 +22,7 @@ import {
 import { extractChapterItems, getChapterDocuments, getChapterTaskMetas } from '@/lib/courseChapters';
 import type { AuthSession, Course, CourseDetails, CourseDocument, Task, CoursesCustom, StudyIncrement } from '@/lib/api';
 import { notifyAuthExit } from '@/lib/notifications';
+import { hasActiveStoredSignMonitor } from '@/lib/signMonitor';
 import { TaskInlineItem } from './TaskInlineItem';
 import { SignMonitor } from './SignMonitor';
 import { StudyIncrementSettings } from './StudyIncrementSettings';
@@ -226,6 +227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const account = session.account;
   const [courses, setCourses] = useState<Course[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [signMonitorActive, setSignMonitorActive] = useState(() => hasActiveStoredSignMonitor(account.id));
   const [appVersion, setAppVersion] = useState('...');
   const [activeTab, setActiveTab] = useState('courses');
   const [prevTab, setPrevTab] = useState('courses');
@@ -1219,6 +1221,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                 <SignMonitor 
                   accountId={account.id} 
                   onUnauthorized={onLogout} 
+                  onStatusChange={setSignMonitorActive}
                 />
               )}
             </TabsContent>
@@ -1712,6 +1715,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
             ].map((item) => {
               const isActive = activeTab === item.id;
               const Icon = item.icon;
+              const showActiveTaskBadge = item.id === 'tasks' && taskCounts.active > 0;
+              const showSignMonitorBadge = item.id === 'sign' && signMonitorActive;
+
               return (
                 <button
                   key={item.id}
@@ -1720,13 +1726,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                   aria-label={item.label}
                 >
                   <div
-                    className={`flex items-center justify-center w-14 h-8 rounded-full transition-colors duration-200 ${
+                    className={`relative flex items-center justify-center w-14 h-8 rounded-full transition-colors duration-200 ${
                       isActive
                         ? 'text-accent-foreground'
                         : 'text-muted-foreground hover:bg-muted/50'
                     }`}
                   >
                     <Icon className={`w-5 h-5 ${isActive ? 'fill-current/10' : ''}`} />
+                    {showActiveTaskBadge && (
+                      <span
+                        className="absolute -right-0.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground ring-2 ring-card"
+                        aria-label={`${taskCounts.active} 个进行中的任务`}
+                      >
+                        {taskCounts.active}
+                      </span>
+                    )}
+                    {showSignMonitorBadge && (
+                      <span
+                        className="absolute right-1 top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card"
+                        aria-label="签到已启用"
+                      />
+                    )}
                   </div>
                   <span
                     className={`text-xs transition-colors duration-200 ${

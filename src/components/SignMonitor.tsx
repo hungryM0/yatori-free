@@ -13,6 +13,10 @@ import type { SignLog } from '@/lib/api';
 import type { SignLogsResponseData } from '@/lib/api';
 import { getSessionCached, readSessionCache, writeSessionCache } from '@/lib/sessionCache';
 import {
+  getSignMonitorExpiresStorageKey,
+  readStoredMonitorExpiresAt,
+} from '@/lib/signMonitor';
+import {
   Play,
   Square,
   RefreshCw,
@@ -23,28 +27,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const SIGN_MONITOR_EXPIRES_STORAGE_PREFIX = 'yatori-sign-monitor-expires-at:';
 const SIGN_LOGS_CACHE_PREFIX = 'sign-logs:';
 
 function getSignLogsCacheKey(accountId: string, limit: number, offset: number) {
   return `${SIGN_LOGS_CACHE_PREFIX}${accountId}:${limit}:${offset}`;
-}
-
-function getSignMonitorExpiresStorageKey(accountId: string) {
-  return `${SIGN_MONITOR_EXPIRES_STORAGE_PREFIX}${accountId}`;
-}
-
-function readStoredMonitorExpiresAt(accountId: string) {
-  const raw = localStorage.getItem(getSignMonitorExpiresStorageKey(accountId));
-  if (!raw) return null;
-
-  const expiresAt = Number(raw);
-  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-    localStorage.removeItem(getSignMonitorExpiresStorageKey(accountId));
-    return null;
-  }
-
-  return expiresAt;
 }
 
 function getMonitorExpiresAt(startedAt?: string | null, maxRunSeconds?: number) {
@@ -80,11 +66,13 @@ function formatLogDateTime(value: string) {
 interface SignMonitorProps {
   accountId: string;
   onUnauthorized: () => void;
+  onStatusChange?: (active: boolean) => void;
 }
 
 export const SignMonitor: React.FC<SignMonitorProps> = ({
   accountId,
   onUnauthorized,
+  onStatusChange,
 }) => {
   const logsLimit = 10;
   const initialLogs = readSessionCache<SignLogsResponseData>(
@@ -107,6 +95,10 @@ export const SignMonitor: React.FC<SignMonitorProps> = ({
   const monitorRemainingMs = monitorExpiresAt ? Math.max(0, monitorExpiresAt - now) : 0;
   const monitorStarted = monitorRemainingMs > 0;
   const nextMonitorAction = monitorStarted ? 'stop' : 'start';
+
+  useEffect(() => {
+    onStatusChange?.(monitorStarted);
+  }, [monitorStarted, onStatusChange]);
 
   const fetchLogs = useCallback(async (showLoading = true, useCache = true) => {
     if (showLoading) setLogsLoading(true);
