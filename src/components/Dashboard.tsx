@@ -1737,7 +1737,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                     <Icon className={`w-5 h-5 ${isActive ? 'fill-current/10' : ''}`} />
                     {showActiveTaskBadge && (
                       <span
-                        className="absolute -right-0.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground ring-2 ring-card"
+                        className="absolute -right-0.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-card"
                         aria-label={`${taskCounts.active} 个进行中的任务`}
                       >
                         {taskCounts.active}
