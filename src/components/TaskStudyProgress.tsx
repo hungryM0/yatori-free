@@ -29,6 +29,18 @@ function formatDelta(value: number, unit: string) {
   return `${value >= 0 ? '+' : ''}${formatValue(value, unit)}`;
 }
 
+function isVisibleMetric(metric: StudyMetricProgress) {
+  return metric.target > metric.baseline;
+}
+
+function getVisibleMetrics(course: CourseStudyProgress) {
+  return [
+    { icon: Eye, label: '学习次数', metric: course.visitCount, unit: '次' },
+    { icon: Clock3, label: '视频观看时长', metric: course.videoStudyMinutes, unit: '分钟' },
+    { icon: FileText, label: '阅读时长', metric: course.readMinutes, unit: '分钟' },
+  ].filter(({ metric }) => isVisibleMetric(metric));
+}
+
 function StudyMetric({ icon: Icon, label, metric, unit }: StudyMetricProps) {
   const increment = metric.current - metric.baseline;
   const targetIncrement = metric.target - metric.baseline;
@@ -69,7 +81,11 @@ function StudyMetric({ icon: Icon, label, metric, unit }: StudyMetricProps) {
 }
 
 export function TaskStudyProgress({ courses }: TaskStudyProgressProps) {
-  if (courses.length === 0) {
+  const visibleCourses = courses
+    .map((course) => ({ course, metrics: getVisibleMetrics(course) }))
+    .filter(({ metrics }) => metrics.length > 0);
+
+  if (visibleCourses.length === 0) {
     return null;
   }
 
@@ -82,18 +98,20 @@ export function TaskStudyProgress({ courses }: TaskStudyProgressProps) {
         </div>
       </div>
       <div className="space-y-2">
-        {courses.map((course) => (
-          <div key={course.classId} className="rounded-lg border border-border/60 bg-card/70 p-2.5">
-            <p className="truncate text-[11px] font-medium text-foreground" title={course.courseName}>
-              {course.courseName}
-            </p>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
-              <StudyMetric icon={Eye} label="学习次数" metric={course.visitCount} unit="次" />
-              <StudyMetric icon={Clock3} label="视频观看时长" metric={course.videoStudyMinutes} unit="分钟" />
-              <StudyMetric icon={FileText} label="阅读时长" metric={course.readMinutes} unit="分钟" />
+        {visibleCourses.map(({ course, metrics }) => {
+          return (
+            <div key={course.classId} className="rounded-lg border border-border/60 bg-card/70 p-2.5">
+              <p className="truncate text-[11px] font-medium text-foreground" title={course.courseName}>
+                {course.courseName}
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
+                {metrics.map(({ icon: Icon, label, metric, unit }) => (
+                  <StudyMetric key={label} icon={Icon} label={label} metric={metric} unit={unit} />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
