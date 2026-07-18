@@ -128,7 +128,8 @@ const DEFAULT_TASK_EXECUTION_SETTINGS: TaskExecutionSettingsState = {
 
 const DEFAULT_STUDY_INCREMENT: StudyIncrement = {
   visitCount: 0,
-  studyMinutes: 0,
+  videoStudyMinutes: 0,
+  readSeconds: 0,
 };
 
 const ACTIVE_TASK_STATUSES = ['pending', 'running', 'stopping'] as const;
@@ -551,12 +552,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
       coursesSettings: includeCoursesList.flatMap((classId) => {
         const studyIncrement = studyIncrements[classId] ?? DEFAULT_STUDY_INCREMENT;
         const visitCount = studyIncrement.visitCount ?? 0;
-        const studyMinutes = studyIncrement.studyMinutes ?? 0;
-        if (visitCount === 0 && studyMinutes === 0) {
+        const videoStudyMinutes = studyIncrement.videoStudyMinutes ?? 0;
+        const readSeconds = studyIncrement.readSeconds ?? 0;
+        if (visitCount === 0 && videoStudyMinutes === 0 && readSeconds === 0) {
           return [];
         }
 
-        return [{ classId, studyIncrement: { visitCount, studyMinutes } }];
+        return [{ classId, studyIncrement: { visitCount, videoStudyMinutes, readSeconds } }];
       }),
     });
 
@@ -639,7 +641,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const saveStudyIncrement = (classId: string, value: StudyIncrement) => {
     setStudyIncrements((previous) => ({ ...previous, [classId]: value }));
 
-    if ((value.visitCount ?? 0) > 0 || (value.studyMinutes ?? 0) > 0) {
+    if (
+      (value.visitCount ?? 0) > 0
+      || (value.videoStudyMinutes ?? 0) > 0
+      || (value.readSeconds ?? 0) > 0
+    ) {
       setSelectedCourses((previous) => new Set(previous).add(classId));
     }
   };
@@ -1004,11 +1010,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                         const isSelected = selectedCourses.has(course.key);
                         const studyIncrement = studyIncrements[course.key] ?? DEFAULT_STUDY_INCREMENT;
                         const studyVisitCount = studyIncrement.visitCount ?? 0;
-                        const studyMinutes = studyIncrement.studyMinutes ?? 0;
-                        const hasStudyIncrement = studyVisitCount > 0 || studyMinutes > 0;
+                        const videoStudyMinutes = studyIncrement.videoStudyMinutes ?? 0;
+                        const readSeconds = studyIncrement.readSeconds ?? 0;
+                        const hasStudyIncrement = studyVisitCount > 0 || videoStudyMinutes > 0 || readSeconds > 0;
                         const studyIncrementSummary = [
                           studyVisitCount > 0 ? `+${studyVisitCount}次` : null,
-                          studyMinutes > 0 ? `+${studyMinutes}分钟` : null,
+                          videoStudyMinutes > 0 ? `视频观看 +${videoStudyMinutes}分钟` : null,
+                          readSeconds > 0 ? `阅读 +${readSeconds}秒` : null,
                         ].filter(Boolean).join(' ');
 
                         return (

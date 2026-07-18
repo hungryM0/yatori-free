@@ -134,7 +134,7 @@ export function StudyIncrementSettings({
     <StudyIncrementDialog
       key={course.key}
       course={course}
-      initialValue={values[course.key] ?? { visitCount: 0, studyMinutes: 0 }}
+      initialValue={values[course.key] ?? { visitCount: 0, videoStudyMinutes: 0, readSeconds: 0 }}
       studyStats={studyStats}
       statsLoaded={statsLoaded}
       loadingStats={loadingStats}
@@ -164,10 +164,12 @@ function StudyIncrementDialog({
   onSave,
 }: StudyIncrementDialogProps) {
   const initialVisitCount = initialValue.visitCount ?? 0;
-  const initialStudyMinutes = initialValue.studyMinutes ?? 0;
+  const initialVideoStudyMinutes = initialValue.videoStudyMinutes ?? 0;
+  const initialReadSeconds = initialValue.readSeconds ?? 0;
   const [draft, setDraft] = useState({
     visitCount: initialVisitCount === 0 ? '' : String(initialVisitCount),
-    studyMinutes: initialStudyMinutes === 0 ? '' : String(initialStudyMinutes),
+    videoStudyMinutes: initialVideoStudyMinutes === 0 ? '' : String(initialVideoStudyMinutes),
+    readSeconds: initialReadSeconds === 0 ? '' : String(initialReadSeconds),
   });
 
   const updateDraft = (field: keyof StudyIncrement, value: string) => {
@@ -177,7 +179,8 @@ function StudyIncrementDialog({
   const save = () => {
     onSave(course.key, {
       visitCount: draft.visitCount === '' ? 0 : Number(draft.visitCount),
-      studyMinutes: draft.studyMinutes === '' ? 0 : Number(draft.studyMinutes),
+      videoStudyMinutes: draft.videoStudyMinutes === '' ? 0 : Number(draft.videoStudyMinutes),
+      readSeconds: draft.readSeconds === '' ? 0 : Number(draft.readSeconds),
     });
     onOpenChange(false);
   };
@@ -216,7 +219,7 @@ function StudyIncrementDialog({
                 <div className="space-y-1">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Clock3 className="h-3.5 w-3.5" />
-                    当前学习时长
+                    当前视频观看时长
                   </span>
                   <div className="text-lg font-semibold tabular-nums text-foreground">
                     {studyStats.studyMinutes ?? '--'}<span className="ml-1 text-xs font-normal text-muted-foreground">分钟</span>
@@ -246,14 +249,24 @@ function StudyIncrementDialog({
             onChange={(value) => updateDraft('visitCount', value)}
           />
           <StepperField
-            id={`study-minutes-${course.key}`}
-            label="增加学习时长："
-            value={draft.studyMinutes}
+            id={`study-video-minutes-${course.key}`}
+            label="增加视频观看时长："
+            value={draft.videoStudyMinutes}
             maximum={4000}
             step={10}
             presets={[30, 60, 120, 300]}
             unit="分钟"
-            onChange={(value) => updateDraft('studyMinutes', value)}
+            onChange={(value) => updateDraft('videoStudyMinutes', value)}
+          />
+          <StepperField
+            id={`study-read-${course.key}`}
+            label="增加阅读时长："
+            value={draft.readSeconds}
+            maximum={86400}
+            step={60}
+            presets={[60, 300, 600, 1800]}
+            unit="秒"
+            onChange={(value) => updateDraft('readSeconds', value)}
           />
         </div>
 

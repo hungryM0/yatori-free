@@ -89,7 +89,7 @@ export function TaskStudyProgress({ courses }: TaskStudyProgressProps) {
             </p>
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <StudyMetric icon={Eye} label="学习次数" metric={course.visitCount} unit="次" />
-              <StudyMetric icon={Clock3} label="学习时长" metric={course.studyMinutes} unit="分钟" />
+              <StudyMetric icon={Clock3} label="视频观看时长" metric={course.videoStudyMinutes} unit="分钟" />
             </div>
           </div>
         ))}

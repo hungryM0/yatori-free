@@ -482,10 +482,13 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
                   const courseName = courseNameByIdentifier[setting.classId] ?? setting.classId;
                   const increments = [
                     (setting.studyIncrement.visitCount ?? 0) > 0
-                      ? `次数 +${setting.studyIncrement.visitCount}`
+                      ? `学习次数 +${setting.studyIncrement.visitCount}`
                       : null,
-                    (setting.studyIncrement.studyMinutes ?? 0) > 0
-                      ? `时长 +${setting.studyIncrement.studyMinutes} 分钟`
+                    (setting.studyIncrement.videoStudyMinutes ?? 0) > 0
+                      ? `视频观看 +${setting.studyIncrement.videoStudyMinutes} 分钟`
+                      : null,
+                    (setting.studyIncrement.readSeconds ?? 0) > 0
+                      ? `阅读 +${setting.studyIncrement.readSeconds} 秒`
                       : null,
                   ].filter(Boolean).join(' · ');
                   return (
