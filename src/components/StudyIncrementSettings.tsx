@@ -16,6 +16,7 @@ interface StudyIncrementSettingsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   course: Course | null;
+  hasReadTaskPoints: boolean;
   studyStats?: StudyStats;
   statsLoaded: boolean;
   loadingStats: boolean;
@@ -122,6 +123,7 @@ export function StudyIncrementSettings({
   open,
   onOpenChange,
   course,
+  hasReadTaskPoints,
   studyStats,
   statsLoaded,
   loadingStats,
@@ -134,6 +136,7 @@ export function StudyIncrementSettings({
     <StudyIncrementDialog
       key={course.key}
       course={course}
+      hasReadTaskPoints={hasReadTaskPoints}
       initialValue={values[course.key] ?? { visitCount: 0, videoStudyMinutes: 0, readMinutes: 0 }}
       studyStats={studyStats}
       statsLoaded={statsLoaded}
@@ -146,6 +149,7 @@ export function StudyIncrementSettings({
 
 interface StudyIncrementDialogProps {
   course: Course;
+  hasReadTaskPoints: boolean;
   initialValue: StudyIncrement;
   studyStats?: StudyStats;
   statsLoaded: boolean;
@@ -156,6 +160,7 @@ interface StudyIncrementDialogProps {
 
 function StudyIncrementDialog({
   course,
+  hasReadTaskPoints,
   initialValue,
   studyStats,
   statsLoaded,
@@ -180,7 +185,7 @@ function StudyIncrementDialog({
     onSave(course.key, {
       visitCount: draft.visitCount === '' ? 0 : Number(draft.visitCount),
       videoStudyMinutes: draft.videoStudyMinutes === '' ? 0 : Number(draft.videoStudyMinutes),
-      readMinutes: draft.readMinutes === '' ? 0 : Number(draft.readMinutes),
+      readMinutes: hasReadTaskPoints && draft.readMinutes !== '' ? Number(draft.readMinutes) : 0,
     });
     onOpenChange(false);
   };
@@ -206,7 +211,7 @@ function StudyIncrementDialog({
                 正在读取该课程学习数据
               </div>
             ) : studyStats?.available ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className={`grid grid-cols-1 gap-3 ${hasReadTaskPoints ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                 <div className="space-y-1">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Eye className="h-3.5 w-3.5" />
@@ -225,15 +230,17 @@ function StudyIncrementDialog({
                     {studyStats.videoStudyMinutes ?? '--'}<span className="ml-1 text-xs font-normal text-muted-foreground">分钟</span>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    当前阅读时长
-                  </span>
-                  <div className="text-lg font-semibold tabular-nums text-foreground">
-                    {studyStats.readMinutes ?? '--'}<span className="ml-1 text-xs font-normal text-muted-foreground">分钟</span>
+                {hasReadTaskPoints && (
+                  <div className="space-y-1">
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <BookOpen className="h-3.5 w-3.5" />
+                      当前阅读时长
+                    </span>
+                    <div className="text-lg font-semibold tabular-nums text-foreground">
+                      {studyStats.readMinutes ?? '--'}<span className="ml-1 text-xs font-normal text-muted-foreground">分钟</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : statsLoaded ? (
               <div className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -267,16 +274,18 @@ function StudyIncrementDialog({
             unit="分钟"
             onChange={(value) => updateDraft('videoStudyMinutes', value)}
           />
-          <StepperField
-            id={`study-read-${course.key}`}
-            label="增加阅读时长："
-            value={draft.readMinutes}
-            maximum={4000}
-            step={10}
-            presets={[30, 60, 120, 300]}
-            unit="分钟"
-            onChange={(value) => updateDraft('readMinutes', value)}
-          />
+          {hasReadTaskPoints && (
+            <StepperField
+              id={`study-read-${course.key}`}
+              label="增加阅读时长："
+              value={draft.readMinutes}
+              maximum={4000}
+              step={10}
+              presets={[30, 60, 120, 300]}
+              unit="分钟"
+              onChange={(value) => updateDraft('readMinutes', value)}
+            />
+          )}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border/50 bg-muted/30 p-3 sm:px-5">

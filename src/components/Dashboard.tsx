@@ -553,7 +553,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
         const studyIncrement = studyIncrements[classId] ?? DEFAULT_STUDY_INCREMENT;
         const visitCount = studyIncrement.visitCount ?? 0;
         const videoStudyMinutes = studyIncrement.videoStudyMinutes ?? 0;
-        const readMinutes = studyIncrement.readMinutes ?? 0;
+        const hasReadTaskPoints = courseDetailsMap[classId]?.hasReadTaskPoints === true;
+        const readMinutes = hasReadTaskPoints ? (studyIncrement.readMinutes ?? 0) : 0;
         if (visitCount === 0 && videoStudyMinutes === 0 && readMinutes === 0) {
           return [];
         }
@@ -1011,7 +1012,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                         const studyIncrement = studyIncrements[course.key] ?? DEFAULT_STUDY_INCREMENT;
                         const studyVisitCount = studyIncrement.visitCount ?? 0;
                         const videoStudyMinutes = studyIncrement.videoStudyMinutes ?? 0;
-                        const readMinutes = studyIncrement.readMinutes ?? 0;
+                        const hasReadTaskPoints = courseDetailsMap[course.key]?.hasReadTaskPoints === true;
+                        const readMinutes = hasReadTaskPoints ? (studyIncrement.readMinutes ?? 0) : 0;
                         const hasStudyIncrement = studyVisitCount > 0 || videoStudyMinutes > 0 || readMinutes > 0;
                         const studyIncrementSummary = [
                           studyVisitCount > 0 ? `+${studyVisitCount}次` : null,
@@ -1686,6 +1688,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
           if (!open) setStudyIncrementCourseKey(null);
         }}
         course={studyIncrementCourse}
+        hasReadTaskPoints={studyIncrementCourseDetails?.hasReadTaskPoints === true}
         studyStats={studyIncrementCourseDetails?.studyStats}
         statsLoaded={studyIncrementCourseDetails !== undefined}
         loadingStats={studyIncrementCourseKey !== null && loadingDetails[studyIncrementCourseKey] === true}

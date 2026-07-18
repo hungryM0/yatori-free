@@ -149,6 +149,8 @@ export interface CourseDetails {
   documents?: CourseDocument[];
   works?: unknown[];
   exams?: unknown[];
+  hasReadTaskPoints?: boolean;
+  readTaskPointCount?: number;
   studyStats?: StudyStats;
   blockedChapterCount?: number;
   blockedPointCount?: number;
