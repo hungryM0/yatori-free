@@ -6,20 +6,21 @@ import { Toaster } from '@/components/ui/sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { clearSessionCache } from '@/lib/sessionCache';
+import { clearQRLoginSession } from '@/lib/qrLoginSession';
 
 const LOGOUT_SUPPRESSION_KEY = 'yatori-auth-logout-suppressed';
 
 function AuthRestoreScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8" aria-busy="true">
-      <Card className="w-full max-w-[360px] overflow-hidden border-border bg-card shadow-[0_2px_4px_rgba(0,0,0,0.08)] rounded-lg">
+    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA] px-4 py-8 dark:bg-[#121314]" aria-busy="true">
+      <Card className="w-full max-w-[450px] overflow-hidden rounded-xl border border-[#E0E0E0] bg-white shadow-[0_2px_4px_rgba(0,0,0,0.08)] dark:border-[#333537] dark:bg-[#1f2021] md:max-w-[min(90vw,1440px)]">
         <div className="google-accent-bar" aria-hidden="true">
           <div></div>
           <div></div>
           <div></div>
           <div></div>
         </div>
-        <CardContent className="flex min-h-[260px] flex-col items-center justify-center p-8">
+        <CardContent className="flex min-h-[516px] flex-col items-center justify-center p-8 md:px-12 md:py-10">
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-center justify-center font-semibold text-3xl tracking-tight select-none" aria-hidden="true">
               <span className="text-[#4285F4]">Y</span>
@@ -34,7 +35,7 @@ function AuthRestoreScreen() {
 
           <div className="mt-8 flex flex-col items-center gap-3">
             <svg className="google-spinner" viewBox="0 0 50 50" role="status" aria-label="加载中">
-              <circle className="path" cx="25" cy="25" r="20" fill="none" strokeWidth="4"></circle>
+              <circle className="path" cx="25" cy="25" r="20" fill="none" strokeWidth="4" />
             </svg>
             <div className="text-center text-xs font-medium text-muted-foreground">加载中...</div>
           </div>
@@ -85,6 +86,7 @@ function App() {
 
   const handleLoginSuccess = useCallback((newSession: AuthSession) => {
     clearSessionCache();
+    clearQRLoginSession();
     sessionStorage.removeItem(LOGOUT_SUPPRESSION_KEY);
     setSession(newSession);
     setIsRestoringSession(false);
@@ -93,6 +95,7 @@ function App() {
   const handleLogout = useCallback(async () => {
     sessionStorage.setItem(LOGOUT_SUPPRESSION_KEY, '1');
     clearSessionCache();
+    clearQRLoginSession();
 
     try {
       await logout();

@@ -206,6 +206,17 @@ export interface LoginData {
   account: Account;
 }
 
+export type QRSessionStatus = 'pending' | 'scanned' | 'confirmed' | 'expired' | 'failed';
+
+export interface QRSessionData {
+  id: string;
+  status: QRSessionStatus;
+  expiresAt: string;
+  pollIntervalMs: number;
+  qrContent?: string;
+  scannedName?: string;
+}
+
 export interface Task {
   id: string;
   ownerUserId?: string;
@@ -456,6 +467,28 @@ export function login(payload: LoginRequest) {
     method: 'POST',
     body: JSON.stringify(payload),
   }, true);
+}
+
+export function createQRSession() {
+  return apiRequest<QRSessionData>('/auth/qr-sessions', {
+    method: 'POST',
+  }, true);
+}
+
+export function getQRSession(sessionId: string) {
+  return apiRequest<QRSessionData>(
+    `/auth/qr-sessions/${encodeApiPathSegment(sessionId)}`,
+    undefined,
+    true,
+  );
+}
+
+export function exchangeQRSession(sessionId: string) {
+  return apiRequest<LoginData>(
+    `/auth/qr-sessions/${encodeApiPathSegment(sessionId)}/session`,
+    { method: 'POST' },
+    true,
+  );
 }
 
 export function logout() {

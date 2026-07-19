@@ -4,10 +4,11 @@ import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { getUserFacingErrorMessage, login } from '@/lib/api';
-import type { AuthSession } from '@/lib/api';
+import type { AuthSession, LoginData } from '@/lib/api';
 import { readSavedAccount, saveSavedAccount } from '@/lib/savedAccount';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { QRCodeLogin } from './QRCodeLogin';
 
 interface LoginProps {
   onLoginSuccess: (session: AuthSession) => void;
@@ -107,6 +108,21 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setPasswordError('');
   };
 
+  const completeLogin = (data: LoginData) => {
+    toast.success('登录成功');
+    saveSavedAccount({
+      account: data.account.account,
+    });
+    onLoginSuccess({
+      expiresAt: data.expiresAt,
+      displayName: data.displayName ?? data.account.name,
+      avatarUrl: data.avatarUrl ?? data.account.avatarUrl ?? null,
+      schoolName: data.schoolName ?? data.account.schoolName,
+      user: data.user,
+      account: data.account,
+    });
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
@@ -125,19 +141,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       });
 
       const data = response.data;
-      toast.success('登录成功');
-      saveSavedAccount({
-        account: account.trim(),
-      });
-      const sessionData: AuthSession = {
-        expiresAt: data.expiresAt,
-        displayName: data.displayName ?? data.account.name,
-        avatarUrl: data.avatarUrl ?? data.account.avatarUrl ?? null,
-        schoolName: data.schoolName ?? data.account.schoolName,
-        user: data.user,
-        account: data.account,
-      };
-      onLoginSuccess(sessionData);
+      completeLogin(data);
     } catch (error) {
       console.error(error);
       const errMsg = getUserFacingErrorMessage(error, '服务暂时不可用，请稍后重试');
@@ -150,7 +154,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA] px-4 py-8 dark:bg-[#121314] transition-colors duration-300">
-      <Card className="w-full max-w-[450px] overflow-hidden border border-[#E0E0E0] dark:border-[#333537] shadow-[0_2px_4px_rgba(0,0,0,0.08)] bg-white dark:bg-[#1f2021] rounded-lg">
+      <Card className="w-full max-w-[450px] overflow-hidden rounded-xl border border-[#E0E0E0] bg-white shadow-[0_2px_4px_rgba(0,0,0,0.08)] dark:border-[#333537] dark:bg-[#1f2021] md:max-w-[min(90vw,1440px)]">
         {/* Google Accent Bar */}
         <div className="google-accent-bar">
           <div></div>
@@ -159,9 +163,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           <div></div>
         </div>
 
-        <CardContent className="p-8 md:p-10 flex flex-col items-center relative">
+        <CardContent className="grid p-0 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <QRCodeLogin onLoginSuccess={completeLogin} />
+          <div className="relative flex min-w-0 flex-col items-center p-8 md:min-h-[516px] md:justify-center md:px-12 md:py-10">
           {/* Google Colored Logo */}
-          <div className="flex items-center justify-center font-semibold text-3xl tracking-tight mb-4 select-none">
+          <div className="mb-4 flex items-center justify-center text-3xl font-semibold tracking-tight select-none md:hidden">
             <span className="text-[#4285F4]">Y</span>
             <span className="text-[#EA4335]">a</span>
             <span className="text-[#FBBC05]">t</span>
@@ -327,6 +333,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <p className="mt-4 text-sm font-medium text-[#1a73e8] animate-pulse">正在登录...</p>
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
       
