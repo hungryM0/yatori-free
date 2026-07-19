@@ -215,7 +215,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   </div>
 
                   <div className="flex justify-between items-center pt-4">
-                    <span className="text-sm font-medium text-[#4285F4] cursor-pointer hover:underline" onClick={() => openExternalUrl('https://status.hungrym0.com/status/hungrym0-service')}>
+                    <span className="text-sm font-medium text-[#4285F4] cursor-pointer hover:underline" onClick={() => openExternalUrl('https://hungrym0.com/blog/xxt/')}>
                       了解详情
                     </span>
                     <Button 

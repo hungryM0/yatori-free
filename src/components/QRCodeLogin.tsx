@@ -23,12 +23,10 @@ function getStatusMessage(session: QRSessionData) {
         : '已扫码，请在学习通中确认登录';
     case 'confirmed':
       return '正在进入 Yatori...';
-    case 'expired':
-      return '二维码已过期';
     case 'failed':
       return '扫码会话不可用';
     default:
-      return '请用学习通扫描二维码';
+      return '';
   }
 }
 
@@ -182,10 +180,10 @@ export function QRCodeLogin({ onLoginSuccess }: QRCodeLoginProps) {
   }
 
   const canRefresh = !isCreating && !isExchanging;
-  const statusMessage = session
-    ? getStatusMessage(session)
-    : error || '正在生成二维码';
+  const statusMessage = error || (session ? getStatusMessage(session) : '');
   const isError = Boolean(error) || session?.status === 'failed';
+  const isExpired = session?.status === 'expired';
+  const shouldShowStatus = Boolean(error) || ['scanned', 'confirmed', 'failed'].includes(session?.status ?? '');
 
   return (
     <section className="hidden min-h-[516px] flex-col items-center justify-center border-r border-[#E0E3E7] bg-white px-10 py-12 text-center dark:border-[#333537] dark:bg-[#1f2021] md:flex">
@@ -200,7 +198,7 @@ export function QRCodeLogin({ onLoginSuccess }: QRCodeLoginProps) {
       <h1 className="text-[28px] font-normal tracking-[-0.02em] text-[#202124] dark:text-[#e8eaed]">扫码登录</h1>
       <p className="mt-2 text-sm text-[#5f6368] dark:text-[#a6a8ab]">使用学习通 App 扫码</p>
 
-      <div className="mt-7 flex h-[208px] w-[208px] items-center justify-center rounded-2xl border border-[#DADCE0] bg-white p-3 shadow-[0_1px_2px_rgba(60,64,67,0.12)] dark:border-[#444748] dark:bg-[#f8f9fa]">
+      <div className="relative mt-7 flex h-[208px] w-[208px] items-center justify-center overflow-hidden rounded-2xl border border-[#DADCE0] bg-white p-3 shadow-[0_1px_2px_rgba(60,64,67,0.12)] dark:border-[#444748] dark:bg-[#f8f9fa]">
         {session?.qrContent ? (
           <QRCodeSVG
             value={session.qrContent}
@@ -221,25 +219,44 @@ export function QRCodeLogin({ onLoginSuccess }: QRCodeLoginProps) {
         ) : error ? (
           <p className="px-4 text-sm leading-6 text-[#ba1a1a] dark:text-[#ffb4ab]">二维码暂时无法生成</p>
         ) : null}
+        {isExpired && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 px-4 text-[#202124] backdrop-blur-[1px] dark:bg-[#1f2021]/95 dark:text-[#e8eaed]">
+            <p className="text-base font-medium">二维码已过期</p>
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 gap-2 bg-[#1967d2] px-3 text-white hover:bg-[#185abc]"
+              disabled={!canRefresh}
+              onClick={() => void createSession()}
+            >
+              <RefreshCw className="h-4 w-4" />
+              刷新二维码
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="mt-5 min-h-5 text-sm" aria-live="polite" role={isError ? 'alert' : 'status'}>
-        <p className={isError ? 'text-[#ba1a1a] dark:text-[#ffb4ab]' : 'text-[#3c4043] dark:text-[#e8eaed]'}>
-          {statusMessage}
-        </p>
-      </div>
+      {shouldShowStatus && (
+        <div className="mt-5 min-h-5 text-sm" aria-live="polite" role={isError ? 'alert' : 'status'}>
+          <p className={isError ? 'text-[#ba1a1a] dark:text-[#ffb4ab]' : 'text-[#3c4043] dark:text-[#e8eaed]'}>
+            {statusMessage}
+          </p>
+        </div>
+      )}
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="mt-3 h-9 gap-2 px-3 text-[#1967d2] hover:bg-[#e8f0fe] dark:text-[#a8c7fa] dark:hover:bg-[#a8c7fa]/10"
-        disabled={!canRefresh}
-        onClick={() => void createSession()}
-      >
-        <RefreshCw className="h-4 w-4" />
-        刷新二维码
-      </Button>
+      {!isExpired && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={`${shouldShowStatus ? 'mt-3' : 'mt-5'} h-9 gap-2 px-3 text-[#1967d2] hover:bg-[#e8f0fe] dark:text-[#a8c7fa] dark:hover:bg-[#a8c7fa]/10`}
+          disabled={!canRefresh}
+          onClick={() => void createSession()}
+        >
+          <RefreshCw className="h-4 w-4" />
+          刷新二维码
+        </Button>
+      )}
     </section>
   );
 }
