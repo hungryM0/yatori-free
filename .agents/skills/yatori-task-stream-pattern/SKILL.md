@@ -1,13 +1,13 @@
 ---
 name: yatori-task-stream-pattern
-description: Standardize Yatori task progress streaming with SSE, polling fallback, unauthorized exit handling, and stale-progress protection. Use when building or refactoring task progress views, background status refresh, streaming logs, or any frontend flow that mirrors the existing task progress behavior.
+description: Standardize Yatori task progress polling, terminal snapshots, unauthorized exit handling, and stale-progress protection. Use when building or refactoring task progress views or background status refresh.
 ---
 
-# Yatori Task Stream Pattern
+# Yatori Task Progress Pattern
 
 Use this skill for any real-time task status UI in this repository.
 
-The current baseline lives in `src/components/TaskInlineItem.tsx`. Reuse its semantics instead of inventing a new stream contract.
+The current baseline lives in `src/components/TaskInlineItem.tsx`. The frontend currently polls `GET /tasks/{taskId}`; there is no SSE client contract in this repository. Reuse the existing semantics instead of inventing a stream protocol.
 
 ## Read first
 
@@ -17,8 +17,7 @@ The current baseline lives in `src/components/TaskInlineItem.tsx`. Reuse its sem
 
 ## Required behavior
 
-- Prefer SSE when available.
-- Fall back to polling if SSE is unavailable or never opens.
+- Poll active tasks at the existing interval.
 - Fetch one snapshot for terminal states that still need details.
 - Exit on 401 through the existing unauthorized flow.
 - Ignore stale progress payloads when `updatedAt` goes backwards.
@@ -26,16 +25,15 @@ The current baseline lives in `src/components/TaskInlineItem.tsx`. Reuse its sem
 ## Preferred structure
 
 - Keep endpoint helpers in `src/lib/api.ts`.
-- Keep stream state close to the consuming component unless two or more callers need the same lifecycle.
-- If multiple callers need it, extract a hook such as `useTaskProgressStream`.
+- Keep polling state close to the consuming component unless two or more callers need the same lifecycle.
+- If multiple callers need it, extract a hook such as `useTaskProgressPolling`.
 - Use `useEffectEvent` to separate non-reactive handlers from effect wiring when the codebase is already on React 19.
 
 ## Do not change casually
 
-- SSE event name
-- token transport for stream URL
+- polling interval
 - terminal status list
-- polling backoff timings
+- retry and cleanup timings
 
 If you change them, say why.
 
@@ -43,6 +41,6 @@ If you change them, say why.
 
 Report:
 
-- whether the work reused the existing task stream contract
+- whether the work reused the existing task polling contract
 - whether a shared hook was extracted
-- which fallback and cleanup rules were preserved
+- which terminal snapshot, stale-data, unauthorized, and cleanup rules were preserved

@@ -186,7 +186,7 @@ export function QRCodeLogin({ onLoginSuccess }: QRCodeLoginProps) {
   const shouldShowStatus = Boolean(error) || ['scanned', 'confirmed', 'failed'].includes(session?.status ?? '');
 
   return (
-    <section className="hidden min-h-[516px] flex-col items-center justify-center border-r border-[#E0E3E7] bg-white px-10 py-12 text-center dark:border-[#333537] dark:bg-[#1f2021] md:flex">
+    <section className="login-qr-pane hidden min-h-[516px] flex-col items-center justify-center border-r border-[#E0E3E7] bg-white px-10 py-12 text-center dark:border-[#333537] dark:bg-[#1f2021] md:flex">
       <div className="mb-5 flex items-center justify-center font-semibold text-3xl tracking-tight select-none" aria-hidden="true">
         <span className="text-[#4285F4]">Y</span>
         <span className="text-[#EA4335]">a</span>
@@ -198,7 +198,7 @@ export function QRCodeLogin({ onLoginSuccess }: QRCodeLoginProps) {
       <h1 className="text-[28px] font-normal tracking-[-0.02em] text-[#202124] dark:text-[#e8eaed]">扫码登录</h1>
       <p className="mt-2 text-sm text-[#5f6368] dark:text-[#a6a8ab]">使用学习通 App 扫码</p>
 
-      <div className="relative mt-7 flex h-[208px] w-[208px] items-center justify-center overflow-hidden rounded-2xl border border-[#DADCE0] bg-white p-3 shadow-[0_1px_2px_rgba(60,64,67,0.12)] dark:border-[#444748] dark:bg-[#f8f9fa]">
+      <div className="login-qr-code relative mt-7 flex h-[208px] w-[208px] items-center justify-center overflow-hidden rounded-2xl border border-[#DADCE0] bg-white p-3 shadow-[0_1px_2px_rgba(60,64,67,0.12)] dark:border-[#444748] dark:bg-[#f8f9fa]">
         {session?.qrContent ? (
           <QRCodeSVG
             value={session.qrContent}

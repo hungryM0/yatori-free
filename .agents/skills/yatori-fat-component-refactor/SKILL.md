@@ -7,11 +7,13 @@ description: Refactor oversized Yatori frontend components into smaller modules 
 
 Use this skill when a page component is turning into a mess.
 
-Current hotspots already justify this skill:
+Current hotspots already justify this skill. `Dashboard.tsx` is about 1,800 lines and is the primary split target:
 
 - `src/components/Dashboard.tsx`
 - `src/components/SignMonitor.tsx`
 - `src/components/TaskInlineItem.tsx`
+
+Do not start a broad rewrite only because a file is large. First isolate a user-visible feature boundary and preserve existing behavior.
 
 ## Required pass before editing
 
@@ -41,6 +43,7 @@ Use this order unless the file is tiny.
 - Feature-specific presentational pieces go to feature folders such as:
   - `src/components/dashboard/`
   - `src/components/sign-monitor/`
+  - `src/components/settings/`
 - Shared UI primitives stay in `src/components/ui/`.
 - Reusable non-UI helpers go to `src/lib/`.
 - Do not create placeholder files.

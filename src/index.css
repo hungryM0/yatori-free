@@ -428,7 +428,46 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .progress-running [data-slot="progress-indicator"]::after {
     animation: none;
+  }
+}
+
+/* Keep the desktop QR form usable on short laptop viewports. */
+@media (min-width: 768px) and (max-height: 700px) {
+  .login-page {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .login-auth-pane,
+  .login-qr-pane {
+    min-height: 440px;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .login-qr-code {
+    width: 176px;
+    height: 176px;
+    margin-top: 1.5rem;
+  }
+
+  .login-qr-code svg {
+    width: 144px;
+    height: 144px;
+  }
+
+  .login-footer {
+    margin-top: 1rem;
   }
 }

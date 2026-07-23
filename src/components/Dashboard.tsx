@@ -781,7 +781,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
             size="icon" 
             variant="ghost" 
             onClick={toggleDarkMode}
-            className="rounded-md hover:bg-gray-100 dark:hover:bg-[#2d2e30] h-8 w-8 sm:h-9 sm:w-9 text-gray-600 dark:text-gray-300"
+            className="h-11 w-11 rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#2d2e30] sm:h-9 sm:w-9"
             aria-label={isDark ? '切换到浅色主题' : '切换到深色主题'}
           >
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -809,8 +809,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
               size="icon"
               variant="ghost"
               onClick={onLogout}
-              className="h-6 w-6 rounded-md hover:bg-gray-200 dark:hover:bg-[#393a3b] text-gray-600 dark:text-gray-300 sm:ml-1"
+              className="h-11 w-11 rounded-md text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-[#393a3b] sm:ml-1 sm:h-6 sm:w-6"
               title="退出登录"
+              aria-label="退出登录"
             >
               <LogOut className="w-3.5 h-3.5" />
             </Button>
@@ -1069,13 +1070,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                                 </div>
                               </div>
 
-                              <div className="flex w-full items-center justify-end gap-2 self-stretch sm:w-52 sm:shrink-0 sm:self-auto">
+                              <div className="flex w-full flex-wrap items-center justify-end gap-2 self-stretch sm:w-52 sm:flex-nowrap sm:shrink-0 sm:self-auto">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   disabled={isProcessing}
                                   onClick={() => openStudyIncrementSettings(course.key)}
-                                  className={`h-8 rounded text-xs ${
+                                  className={`h-11 rounded text-xs sm:h-8 ${
                                     hasStudyIncrement
                                       ? 'gap-1 bg-primary/10 px-2 text-primary hover:bg-primary/15 hover:text-primary'
                                       : 'gap-1.5 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -1093,7 +1094,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                                     size="sm"
                                     disabled={isStoppingProcessing}
                                     onClick={() => void handleStopTask(course.processingTaskId as string)}
-                                    className="h-8 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/5 hover:border-destructive rounded"
+                                  className="h-11 gap-1 rounded border-destructive/30 text-xs text-destructive hover:border-destructive hover:bg-destructive/5 sm:h-8"
                                   >
                                     {isStoppingProcessing ? (
                                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1107,7 +1108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => toggleExpandCourse(course.key)}
-                                  className="h-8 text-xs gap-1 border border-[#c2c6d5] dark:border-[#444748] hover:bg-gray-50/50 dark:hover:bg-[#2d2e30] rounded text-[#4285F4] dark:text-[#adc6ff]"
+                                  className="h-11 gap-1 rounded border border-[#c2c6d5] text-xs text-[#4285F4] hover:bg-gray-50/50 dark:border-[#444748] dark:text-[#adc6ff] dark:hover:bg-[#2d2e30] sm:h-8"
                                 >
                                   {isExpanded ? (
                                     <>
@@ -1469,7 +1470,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                     variant="ghost"
                     disabled={tasksLoading}
                     onClick={() => void fetchTasks()}
-                    className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#2d2e30] shrink-0"
+                    className="h-11 w-11 shrink-0 rounded-full hover:bg-gray-100 dark:hover:bg-[#2d2e30] sm:h-8 sm:w-8"
                     aria-label="刷新任务列表"
                   >
                     <RefreshCw className={`w-4 h-4 ${tasksLoading ? 'animate-spin' : ''}`} />
@@ -1486,7 +1487,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
                         <button
                           key={chip.id}
                           onClick={() => setTaskFilter(chip.id as 'active' | 'completed')}
-                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                          className={`flex min-h-11 min-w-11 items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
                             taskFilter === chip.id
                               ? 'bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]'
                               : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
@@ -1657,7 +1658,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
       {selectedCourses.size > 0 && (
         <div className="fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex items-center gap-2 rounded-xl border border-border bg-card/95 p-2 shadow-md backdrop-blur-md animate-in slide-in-from-bottom-8 fade-in duration-300 sm:inset-x-auto sm:bottom-5 sm:left-1/2 sm:w-max sm:-translate-x-1/2 sm:rounded-lg sm:px-2.5 sm:py-1.5">
           <div className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-foreground sm:flex-none">
-              <span className="truncate">已选 {selectedCourses.size} 门课程 · 提交任务</span>
+              <span className="truncate">已选 {selectedCourses.size} 门课程</span>
           </div>
           <Button
             variant="ghost"

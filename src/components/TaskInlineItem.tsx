@@ -340,16 +340,16 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
         <div className="flex min-w-0 w-full flex-wrap items-center gap-1.5">
           <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           {displayCourses === undefined ? (
-            <span className="text-[10.5px] font-medium text-muted-foreground">课程范围未记录</span>
+            <span className="text-xs font-medium text-muted-foreground">课程范围未记录</span>
           ) : displayCourses.length === 0 ? (
-            <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-[10.5px] font-medium text-primary dark:bg-primary/20 dark:text-primary-foreground/90">
+            <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:bg-primary/20 dark:text-primary-foreground/90">
               未选择课程
             </span>
           ) : (
             displayCourses.map((courseName, i) => (
               <span
                 key={i}
-                className="inline-flex min-w-0 max-w-full items-center rounded-md border border-primary/15 bg-primary/8 px-2 py-1 text-[10.5px] font-medium text-primary dark:bg-primary/15 dark:text-primary-foreground/90 sm:max-w-[180px]"
+                className="inline-flex min-w-0 max-w-full items-center rounded-md border border-primary/15 bg-primary/8 px-2 py-1 text-xs font-medium text-primary dark:bg-primary/15 dark:text-primary-foreground/90 sm:max-w-[180px]"
                 title={courseName}
               >
                 <span className="min-w-0 truncate">{courseName}</span>
@@ -382,7 +382,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
                 <span className="truncate">{progressCourseLabel}</span>
               </div>
               {progressChapterLabel && (
-                <div className="truncate text-[11px] text-muted-foreground" title={progressChapterLabel}>
+                <div className="truncate text-xs text-muted-foreground" title={progressChapterLabel}>
                   {progressChapterLabel}
                 </div>
               )}
@@ -396,7 +396,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
               className={`h-2 overflow-hidden rounded-full bg-muted ${effectiveStatus === 'running' ? 'progress-running' : ''}`}
             />
             
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10.5px] text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span className="shrink-0 font-medium">任务点详情</span>
               <span className="max-w-full rounded-md bg-muted/80 px-1.5 py-1 font-mono font-medium text-foreground wrap-anywhere dark:bg-muted/40">
                 {hasUnitCounts
@@ -413,7 +413,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
       )}
 
       {/* Date & Time details */}
-      <div className="text-[10.5px] text-muted-foreground flex flex-col gap-1 px-1 font-mono">
+      <div className="flex flex-col gap-1 px-1 font-mono text-xs text-muted-foreground">
         <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 min-w-0">
           <span className="shrink-0">启动时间:</span>
           <span className="text-right wrap-anywhere">{task.startedAt ? formatDateTime(task.startedAt) : '未启动'}</span>
@@ -432,8 +432,8 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
         aria-hidden={!showConfig}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="mt-1 min-w-0 w-full space-y-2 rounded-md border border-border/50 bg-muted/20 p-3 text-[11px] text-muted-foreground dark:bg-[#161719]/40">
-          <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground pb-1 border-b border-border/50">
+          <div className="mt-1 min-w-0 w-full space-y-2 rounded-md border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground dark:bg-[#161719]/40">
+          <div className="flex items-center gap-1 border-b border-border/50 pb-1 text-xs font-semibold text-foreground">
             <Settings2 className="w-3 h-3 text-muted-foreground" />
             <span>任务配置详情</span>
           </div>

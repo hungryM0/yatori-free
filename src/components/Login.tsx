@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Card, CardContent } from './ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { getUserFacingErrorMessage, login } from '@/lib/api';
@@ -12,10 +13,6 @@ import { QRCodeLogin } from './QRCodeLogin';
 
 interface LoginProps {
   onLoginSuccess: (session: AuthSession) => void;
-}
-
-function openExternalUrl(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 const MAINLAND_MOBILE_PATTERN = /^1[3-9]\d{9}$/;
@@ -153,7 +150,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA] px-4 py-8 dark:bg-[#121314] transition-colors duration-300">
+    <div className="login-page min-h-screen flex flex-col items-center justify-center bg-[#F8F9FA] px-4 py-8 dark:bg-[#121314] transition-colors duration-300">
       <Card className="w-full max-w-[450px] overflow-hidden rounded-xl border border-[#E0E0E0] bg-white shadow-[0_2px_4px_rgba(0,0,0,0.08)] dark:border-[#333537] dark:bg-[#1f2021] md:max-w-[min(65.6vw,1024px)]">
         {/* Google Accent Bar */}
         <div className="google-accent-bar">
@@ -165,7 +162,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
         <CardContent className="grid p-0 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <QRCodeLogin onLoginSuccess={completeLogin} />
-          <div className="relative flex min-w-0 flex-col items-center p-8 md:min-h-[516px] md:justify-center md:px-12 md:py-10">
+          <div className="login-auth-pane relative flex min-w-0 flex-col items-center p-8 md:min-h-[516px] md:justify-center md:px-12 md:py-10">
           {/* Google Colored Logo */}
           <div className="mb-4 flex items-center justify-center text-3xl font-semibold tracking-tight select-none md:hidden">
             <span className="text-[#4285F4]">Y</span>
@@ -191,7 +188,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 <p className="text-sm text-[#424753] dark:text-[#a6a8ab] mb-8 font-sans">使用您的学习通账号</p>
                 
                 <form onSubmit={handleNextStep} autoComplete="on" className="w-full space-y-6">
-                  <div className="relative">
+                  <div className="space-y-2">
+                    <Label htmlFor="account">手机号</Label>
                     <Input
                       id="account"
                       name="username"
@@ -200,13 +198,15 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                       inputMode="tel"
                       maxLength={11}
                       placeholder="手机号"
+                      aria-invalid={Boolean(accountError)}
+                      aria-describedby={accountError ? 'account-error' : undefined}
                       value={account}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleAccountChange(e.target.value)}
                       className="w-full h-14 px-4 border border-[#727785] dark:border-[#444748] focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] rounded bg-transparent dark:text-[#e3e3e3]"
                       disabled={isLoading}
                     />
                     {accountError && (
-                      <p className="text-xs text-[#ba1a1a] dark:text-[#ffdad6] mt-1.5 ml-1">{accountError}</p>
+                      <p id="account-error" role="alert" className="ml-1 text-xs text-[#ba1a1a] dark:text-[#ffdad6]">{accountError}</p>
                     )}
                   </div>
                   
@@ -215,9 +215,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   </div>
 
                   <div className="flex justify-between items-center pt-4">
-                    <span className="text-sm font-medium text-[#4285F4] cursor-pointer hover:underline" onClick={() => openExternalUrl('https://hungrym0.com/blog/xxt/')}>
+                    <a
+                      href="https://hungrym0.com/blog/xxt/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-[#4285F4] hover:underline"
+                    >
                       了解详情
-                    </span>
+                    </a>
                     <Button 
                       type="submit" 
                       className="bg-[#0058bd] hover:bg-[#1a73e8] text-white px-6 h-10 rounded font-medium text-sm transition-all shadow-none"
@@ -243,15 +248,19 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     tabIndex={-1}
                     className="sr-only"
                   />
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => openExternalUrl('https://passport2.chaoxing.com/pwd/findpwd?version=1')}
-                      className="absolute right-0 -top-6 text-xs font-medium text-[#4285F4] hover:underline disabled:opacity-50"
-                      disabled={isLoading}
-                    >
-                      忘记密码
-                    </button>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label htmlFor="password">密码</Label>
+                      <a
+                        href="https://passport2.chaoxing.com/pwd/findpwd?version=1"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-disabled={isLoading}
+                        className={`text-xs font-medium text-[#4285F4] hover:underline ${isLoading ? 'pointer-events-none opacity-50' : ''}`}
+                      >
+                        忘记密码
+                      </a>
+                    </div>
                     <div className="relative">
                       <Input
                         id="password"
@@ -259,6 +268,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         type={showPassword ? 'text' : 'password'}
                         autoComplete="current-password"
                         placeholder="密码"
+                        aria-invalid={Boolean(passwordError)}
+                        aria-describedby={passwordError ? 'password-error' : undefined}
                         value={password}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                         className="w-full h-14 pl-4 pr-12 border border-[#727785] dark:border-[#444748] focus:border-[#4285F4] focus:ring-1 focus:ring-[#4285F4] rounded bg-transparent dark:text-[#e3e3e3]"
@@ -275,29 +286,31 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                       </button>
                     </div>
                     {passwordError && (
-                      <p className="text-xs text-[#ba1a1a] dark:text-[#ffdad6] mt-1.5 ml-1">{passwordError}</p>
+                      <p id="password-error" role="alert" className="ml-1 text-xs text-[#ba1a1a] dark:text-[#ffdad6]">{passwordError}</p>
                     )}
                   </div>
 
                   <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2 select-none">
+                    <div className="flex items-start gap-2 text-sm leading-5 text-[#424753] dark:text-[#a6a8ab]">
                       <input
                         id="agree-terms"
                         type="checkbox"
                         checked={agreedToTerms}
                         onChange={(e) => setAgreedToTerms(e.target.checked)}
                         disabled={isLoading}
-                        className="w-4 h-4 rounded accent-[#0058bd] border-[#727785] dark:border-[#444748] cursor-pointer disabled:opacity-50 shrink-0"
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#727785] accent-[#0058bd] cursor-pointer disabled:opacity-50 dark:border-[#444748]"
                       />
+                      <div className="min-w-0">
                       <label
                         htmlFor="agree-terms"
-                        className={`text-sm text-[#424753] dark:text-[#a6a8ab] cursor-pointer ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} flex items-center flex-wrap gap-1`}
+                        className={`cursor-pointer ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
                       >
                         我已阅读并同意
-                        <button type="button" onClick={() => setDialogContent('terms')} className="text-[#0058bd] hover:underline font-medium focus:outline-none">服务条款</button>
-                        和
-                        <button type="button" onClick={() => setDialogContent('privacy')} className="text-[#0058bd] hover:underline font-medium focus:outline-none">隐私政策</button>
-                      </label>
+                      </label>{' '}
+                        <button type="button" onClick={() => setDialogContent('terms')} className="font-medium text-[#0058bd] hover:underline">服务条款</button>{' '}
+                        <span aria-hidden="true">和</span>{' '}
+                        <button type="button" onClick={() => setDialogContent('privacy')} className="font-medium text-[#0058bd] hover:underline">隐私政策</button>
+                      </div>
                     </div>
                   </div>
 
@@ -326,8 +339,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
           {/* Loading Animation Overlay */}
           {isLoading && (
-            <div className="absolute inset-0 bg-white/70 dark:bg-[#1f2021]/80 flex flex-col items-center justify-center z-50">
-              <svg className="google-spinner" viewBox="0 0 50 50">
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/70 dark:bg-[#1f2021]/80" role="status" aria-label="正在登录">
+              <svg className="google-spinner" viewBox="0 0 50 50" aria-hidden="true">
                 <circle className="path" cx="25" cy="25" r="20" fill="none" strokeWidth="4"></circle>
               </svg>
               <p className="mt-4 text-sm font-medium text-[#1a73e8] animate-pulse">正在登录...</p>
@@ -338,7 +351,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       </Card>
       
       {/* Footer Info */}
-      <div className="flex gap-6 mt-8 text-xs text-[#70757a] dark:text-[#a6a8ab] font-sans">
+      <div className="login-footer mt-8 flex gap-6 text-xs font-sans text-[#70757a] dark:text-[#a6a8ab]">
         <a href="https://hungrym0.com" className="text-[11px] tracking-[0.03em] hover:no-underline">© 2026 HUNGRY_M0. All rights reserved.</a>
       </div>
 

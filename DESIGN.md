@@ -2,7 +2,7 @@
 name: Yatori Study Control
 purpose: 学习通课程任务与签到管理界面的统一设计契约
 product: 学习管理型后台
-stack: React + TypeScript + Tailwind CSS + shadcn/ui + Radix UI
+stack: Vite 8 + React 19 + TypeScript 6 + Tailwind CSS 4 + shadcn/ui + Radix UI
 breakpoints:
   mobile: '< 640px'
   tablet: '640px - 1023px'
@@ -30,7 +30,7 @@ colors:
   info: '#1A73E8'
   info-container: '#E8F0FE'
 typography:
-  family: 'Geist Variable, system-ui, sans-serif'
+  family: 'Plus Jakarta Sans, system-ui, sans-serif'
   heading-weight: 650
   body-weight: 400
   label-weight: 550
@@ -145,7 +145,7 @@ Yatori 使用 Google 风格四色文字标识或四色 SVG 标识。登录页和
 
 ## 字体与文字
 
-主字体使用 `Geist Variable`，中文使用系统 UI 字体回退。字体依赖必须在入口文件显式引入，不能只在 CSS 中声明字体名。
+主字体使用 `Plus Jakarta Sans`，中文使用系统 UI 字体回退。当前字体通过 CSS 字体栈提供，新增字体依赖前先评估包体和加载成本。
 
 ### 字号层级
 
@@ -167,7 +167,7 @@ Yatori 使用 Google 风格四色文字标识或四色 SVG 标识。登录页和
 
 ### 页面容器
 
-- 页面最大宽度：`1280px`。
+- 桌面主内容遵循 Dashboard 当前的全高控制台布局，不强制套用营销页式的 `1280px` 居中容器。
 - 手机端水平边距：`16px`。
 - 平板端水平边距：`24px`。
 - 桌面端水平边距：`32px`。
@@ -188,7 +188,7 @@ Yatori 使用 Google 风格四色文字标识或四色 SVG 标识。登录页和
 
 ### 移动端 Dashboard
 
-- 使用底部四项导航：课程、签到、任务、设置。
+- 使用顶部标签切换课程、签到、任务和设置；小屏保持紧凑标签布局，不凭空新增底部导航。
 - 页面本身承担主滚动，卡片默认不设置固定高度。
 - 仅超长日志允许内部滚动。
 - 底部导航必须考虑安全区高度。
@@ -280,7 +280,6 @@ Yatori 使用 Google 风格四色文字标识或四色 SVG 标识。登录页和
 | `success` | `success` | 完成结果、结束时间 |
 | `partial_success` | `warning` | 已完成项、失败项、后续建议 |
 | `failed` | `danger` | 错误原因、重试或退出操作 |
-| `night_resting` | `warning` | 当前休息原因、预计恢复时间 |
 
 进度条旁必须有数字或文字结果。状态卡不能只展示一条颜色线。
 

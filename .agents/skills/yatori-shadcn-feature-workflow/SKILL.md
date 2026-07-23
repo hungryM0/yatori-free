@@ -13,6 +13,7 @@ This project already has:
 - `src/index.css`
 - `src/components/ui/`
 - Lucide icons
+- `radix-nova` style with CSS variables and Tailwind CSS 4
 
 Stay inside that system.
 
@@ -26,7 +27,7 @@ Stay inside that system.
 ## Workflow
 
 1. Reuse existing `src/components/ui/` primitives first.
-2. If a primitive is missing, prefer the shadcn registry path already configured for the repo.
+2. If a primitive is missing, add a focused local primitive under `src/components/ui/`; `components.json` has no registry configured.
 3. Keep feature components under `src/components/`.
 4. Keep copy short and task-facing.
 5. Run build and lint after UI changes.
@@ -37,6 +38,7 @@ Stay inside that system.
 - Do not create floating design experiments unrelated to the current page.
 - Reuse theme tokens from `src/index.css` before introducing raw colors.
 - Reuse Lucide icons before drawing custom icons.
+- Check both light and dark themes. Theme state uses `next-themes` and the `yatori-theme` storage key.
 - Keep border radius and density aligned with current pages.
 
 ## Context7

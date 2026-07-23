@@ -50,7 +50,7 @@ function StudyMetric({ icon: Icon, label, metric, unit }: StudyMetricProps) {
 
   return (
     <div className="rounded-md border border-border/50 bg-card/60 p-2.5">
-      <div className="flex min-w-0 flex-col gap-1 text-[11px]">
+      <div className="flex min-w-0 flex-col gap-1 text-xs">
         <span className="flex min-w-0 flex-1 items-center gap-1.5 font-medium text-foreground">
           <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
           <span className="truncate">{label}</span>
@@ -63,16 +63,16 @@ function StudyMetric({ icon: Icon, label, metric, unit }: StudyMetricProps) {
         <span className="shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums text-foreground">
           已 {formatDelta(increment, unit)}
         </span>
-        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[10.5px] text-muted-foreground">
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
           <Target className="h-3 w-3" />
           {formatDelta(targetIncrement, unit)}
         </span>
       </div>
-      <div className="mt-1 whitespace-nowrap text-[10.5px] text-muted-foreground tabular-nums">
+      <div className="mt-1 whitespace-nowrap text-xs text-muted-foreground tabular-nums">
         当前 {metric.current}/{formatValue(metric.target, unit)}
       </div>
       {statusMessage && (
-        <p className="mt-1.5 text-[10.5px] leading-relaxed text-destructive">
+        <p className="mt-1.5 text-xs leading-relaxed text-destructive">
           {statusMessage}
         </p>
       )}
@@ -92,7 +92,7 @@ export function TaskStudyProgress({ courses }: TaskStudyProgressProps) {
   return (
     <section className="space-y-2.5 border-t border-border/60 pt-3" aria-label="学习目标进度">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <BookOpen className="h-3.5 w-3.5 text-primary" />
           学习目标进度
         </div>
@@ -101,7 +101,7 @@ export function TaskStudyProgress({ courses }: TaskStudyProgressProps) {
         {visibleCourses.map(({ course, metrics }) => {
           return (
             <div key={course.classId} className="rounded-lg border border-border/60 bg-card/70 p-2.5">
-              <p className="truncate text-[11px] font-medium text-foreground" title={course.courseName}>
+              <p className="truncate text-xs font-medium text-foreground" title={course.courseName}>
                 {course.courseName}
               </p>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
