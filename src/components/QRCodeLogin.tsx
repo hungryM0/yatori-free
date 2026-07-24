@@ -219,6 +219,17 @@ export function QRCodeLogin({ onLoginSuccess }: QRCodeLoginProps) {
         ) : error ? (
           <p className="px-4 text-sm leading-6 text-[#ba1a1a] dark:text-[#ffb4ab]">二维码暂时无法生成</p>
         ) : null}
+        {shouldShowStatus && !isExpired && (
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-white/90 px-5 text-center backdrop-blur-[1px] dark:bg-[#1f2021]/90"
+            aria-live="polite"
+            role={isError ? 'alert' : 'status'}
+          >
+            <p className={isError ? 'text-sm leading-6 text-[#ba1a1a] dark:text-[#ffb4ab]' : 'text-sm leading-6 font-medium text-[#3c4043] dark:text-[#e8eaed]'}>
+              {statusMessage}
+            </p>
+          </div>
+        )}
         {isExpired && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 px-4 text-[#202124] backdrop-blur-[1px] dark:bg-[#1f2021]/95 dark:text-[#e8eaed]">
             <p className="text-base font-medium">二维码已过期</p>
@@ -236,20 +247,12 @@ export function QRCodeLogin({ onLoginSuccess }: QRCodeLoginProps) {
         )}
       </div>
 
-      {shouldShowStatus && (
-        <div className="mt-5 min-h-5 text-sm" aria-live="polite" role={isError ? 'alert' : 'status'}>
-          <p className={isError ? 'text-[#ba1a1a] dark:text-[#ffb4ab]' : 'text-[#3c4043] dark:text-[#e8eaed]'}>
-            {statusMessage}
-          </p>
-        </div>
-      )}
-
       {!isExpired && (
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className={`${shouldShowStatus ? 'mt-3' : 'mt-5'} h-9 gap-2 px-3 text-[#1967d2] hover:bg-[#e8f0fe] dark:text-[#a8c7fa] dark:hover:bg-[#a8c7fa]/10`}
+          className="mt-5 h-9 gap-2 px-3 text-[#1967d2] hover:bg-[#e8f0fe] dark:text-[#a8c7fa] dark:hover:bg-[#a8c7fa]/10"
           disabled={!canRefresh}
           onClick={() => void createSession()}
         >

@@ -467,6 +467,12 @@
     height: 144px;
   }
 
+  /* Keep the loading indicator compact; the rule above targets the QR code too broadly. */
+  .login-qr-code > .google-spinner {
+    width: 56px;
+    height: 56px;
+  }
+
   .login-footer {
     margin-top: 1rem;
   }

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Tabs, TabsContent } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 
@@ -23,18 +23,20 @@ import { extractChapterItems, getChapterDocuments, getChapterTaskMetas } from '@
 import type { AuthSession, Course, CourseDetails, CourseDocument, Task, CoursesCustom, StudyIncrement } from '@/lib/api';
 import { notifyAuthExit } from '@/lib/notifications';
 import { hasActiveStoredSignMonitor } from '@/lib/signMonitor';
-import { TaskInlineItem } from './TaskInlineItem';
+import { isActiveTaskStatus } from '@/lib/taskStatus';
+import { useTaskProgressPolling } from '@/hooks/useTaskProgressPolling';
+import { DashboardNavigation, type MobileDashboardTabId } from './dashboard/DashboardNavigation';
+import { TaskStatusContent } from './dashboard/TaskStatusContent';
+import { TaskStatusDrawer } from './dashboard/TaskStatusDrawer';
+import { TaskStatusTrigger } from './dashboard/TaskStatusTrigger';
 import { SignMonitor } from './SignMonitor';
 import { StudyIncrementSettings } from './StudyIncrementSettings';
 import { EmailNotificationSettings } from './EmailNotificationSettings';
 import { OpenSourceDialog } from './OpenSourceDialog';
 import { 
   LogOut, 
-  Settings, 
-  BookOpen, 
   Play, 
   Square,
-  Activity,
   RefreshCw, 
   AlertCircle, 
   Sun, 
@@ -43,7 +45,6 @@ import {
   ChevronUp,
   Download,
   FileText,
-  MapPin,
   SlidersHorizontal,
   Search,
   X,
@@ -131,12 +132,6 @@ const DEFAULT_STUDY_INCREMENT: StudyIncrement = {
   videoStudyMinutes: 0,
   readMinutes: 0,
 };
-
-const ACTIVE_TASK_STATUSES = ['pending', 'running', 'stopping'] as const;
-
-function isActiveTaskStatus(status: Task['status']) {
-  return ACTIVE_TASK_STATUSES.includes(status as (typeof ACTIVE_TASK_STATUSES)[number]);
-}
 
 function courseHasTaskPoints(course: Course) {
   const hasKnownTaskCount = typeof course.jobCount === 'number' || typeof course.blockedPointCount === 'number';
@@ -231,14 +226,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [signMonitorActive, setSignMonitorActive] = useState(() => hasActiveStoredSignMonitor(account.id));
   const [appVersion, setAppVersion] = useState('...');
-  const [activeTab, setActiveTab] = useState('courses');
-  const [prevTab, setPrevTab] = useState('courses');
+  const [activeTab, setActiveTab] = useState<MobileDashboardTabId>('courses');
+  const [prevTab, setPrevTab] = useState<MobileDashboardTabId>('courses');
+  const [taskDrawerOpen, setTaskDrawerOpen] = useState(false);
   const [taskFilter, setTaskFilter] = useState<'active' | 'completed'>('active');
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
   const isCourseSearchComposing = useRef(false);
 
-  const handleTabChange = useCallback((tabId: string) => {
+  const handleTabChange = useCallback((tabId: MobileDashboardTabId) => {
     setPrevTab(activeTab);
     setActiveTab(tabId);
   }, [activeTab]);
@@ -573,8 +569,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
       if (window.matchMedia('(max-width: 1023px)').matches) {
         setTaskFilter('active');
         handleTabChange('tasks');
+      } else {
+        setTaskFilter('active');
+        setTaskDrawerOpen(true);
       }
-      void fetchTasks({ showLoading: false });
+      void fetchTasks();
       void fetchCourses();
       setSelectedCourses(new Set());
       setStudyIncrements((previous) => {
@@ -675,6 +674,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     onLogout();
   }, [onLogout]);
 
+  const taskSnapshots = useTaskProgressPolling({
+    tasks,
+    onUnauthorized: handleTaskUnauthorized,
+  });
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void fetchTasks();
@@ -701,6 +705,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
       JSON.stringify(persistedSettingsState.form),
     );
   }, [persistedSettingsState]);
+
+  useEffect(() => {
+    const desktopMediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleDesktopTransition = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        setActiveTab((currentTab) => currentTab === 'tasks' ? 'courses' : currentTab);
+      }
+    };
+
+    desktopMediaQuery.addEventListener('change', handleDesktopTransition);
+    return () => desktopMediaQuery.removeEventListener('change', handleDesktopTransition);
+  }, []);
 
   // Keep the task list fresh only while unfinished tasks exist.
   useEffect(() => {
@@ -747,121 +763,115 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
     '--tab-transition-duration': `${durationMs}ms`,
     '--tab-transition-start-x': startTranslateX,
   } as React.CSSProperties;
+  const currentViewTitle = activeTab === 'sign' ? '自动签到' : activeTab === 'settings' ? '提交设置' : '课程列表';
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#121314] text-[#191c1d] dark:text-[#e3e3e3] flex flex-col transition-colors duration-300 font-sans lg:h-screen lg:min-h-0 lg:overflow-hidden">
-      {/* Navigation Top bar */}
-      <header className="sticky top-0 z-40 w-full bg-white dark:bg-[#1f2021] border-b border-[#e1e3e4] dark:border-[#333537] shadow-sm px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-2">
-          <div className="font-semibold tracking-tight select-none inline-flex items-baseline leading-none whitespace-nowrap min-w-0">
-            <span className="text-xl flex items-center shrink-0">
-              <span className="text-[#4285F4]">Y</span>
-              <span className="text-[#EA4335]">a</span>
-              <span className="text-[#FBBC05]">t</span>
-              <span className="text-[#4285F4]">o</span>
-              <span className="text-[#34A853]">r</span>
-              <span className="text-[#EA4335]">i</span>
-            </span>
-            <span className="ml-2 truncate text-xs font-medium leading-none text-gray-500 dark:text-gray-400 sm:hidden">
-              学习通服务
-            </span>
-          </div>
-          <span className="mt-1 text-xs leading-none font-medium text-gray-500 dark:text-gray-400 sm:order-3 sm:mt-0 sm:ml-1.5 sm:translate-y-1">
-            v{appVersion}
-          </span>
-          <span className="hidden truncate text-sm font-medium leading-none text-gray-500 dark:text-gray-400 sm:order-2 sm:inline">
-            学习通服务
-          </span>
-        </div>
+    <div className="min-h-screen bg-background text-foreground font-sans lg:grid lg:h-screen lg:min-h-0 lg:grid-cols-[auto_minmax(0,1fr)] lg:overflow-hidden">
+      <a href="#dashboard-main" className="sr-only z-[60] rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+        跳到主内容
+      </a>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => handleTabChange(value as MobileDashboardTabId)}
+        className="contents"
+        style={tabsStyle}
+      >
+        <DashboardNavigation
+          mode="desktop"
+          activeTab={activeTab}
+          activeTaskCount={taskCounts.active}
+          appVersion={appVersion}
+          signMonitorActive={signMonitorActive}
+          onTabChange={handleTabChange}
+        />
+        <div className="flex min-h-0 min-w-0 flex-col">
+          <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 shadow-sm sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center lg:hidden">
+              <div className="inline-flex min-w-0 items-end font-semibold leading-none tracking-tight" aria-label={`Yatori v${appVersion}`}>
+                <span className="text-xl" aria-label="Yatori">
+                  <span className="text-[var(--google-blue)]">Y</span>
+                  <span className="text-[var(--google-red)]">a</span>
+                  <span className="text-[var(--google-yellow)]">t</span>
+                  <span className="text-[var(--google-blue)]">o</span>
+                  <span className="text-[var(--google-green)]">r</span>
+                  <span className="text-[var(--google-red)]">i</span>
+                </span>
+                <span className="ml-1 translate-y-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">v{appVersion}</span>
+              </div>
+            </div>
+            <h1 className="hidden min-w-0 truncate font-heading text-lg font-semibold lg:block">{currentViewTitle}</h1>
 
-        {/* User Actions */}
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-4 shrink-0">
-          <OpenSourceDialog />
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            onClick={toggleDarkMode}
-            className="h-11 w-11 rounded-md text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-[#2d2e30] sm:h-9 sm:w-9"
-            aria-label={isDark ? '切换到浅色主题' : '切换到深色主题'}
-          >
-            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </Button>
+            <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-4">
+              <OpenSourceDialog />
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={toggleDarkMode}
+                className="h-11 w-11 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
+                aria-label={isDark ? '切换到浅色主题' : '切换到深色主题'}
+              >
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </Button>
 
-          {/* User profile details */}
-          <div className="flex min-w-0 max-w-[172px] items-center gap-1.5 sm:max-w-none sm:gap-3 border border-[#c2c6d5] dark:border-[#444748] rounded-md pl-1.5 sm:pl-2 pr-1.5 sm:pr-3 py-1 bg-gray-50 dark:bg-[#252627]">
+              <TaskStatusDrawer
+                open={taskDrawerOpen}
+                activeTaskCount={taskCounts.active}
+                onOpenChange={setTaskDrawerOpen}
+                trigger={<TaskStatusTrigger activeTaskCount={taskCounts.active} />}
+              >
+                <TaskStatusContent
+                  tasks={tasks}
+                  filteredTasks={filteredTasks}
+                  taskCounts={taskCounts}
+                  taskFilter={taskFilter}
+                  tasksLoading={tasksLoading}
+                  taskSnapshots={taskSnapshots}
+                  courseNameByIdentifier={courseNameByIdentifier}
+                  onTaskFilterChange={setTaskFilter}
+                  onRefresh={() => void fetchTasks()}
+                  onStopTask={handleStopTask}
+                />
+              </TaskStatusDrawer>
+
+              <div className="flex min-w-0 max-w-[172px] items-center gap-1.5 rounded-md border border-border bg-muted/40 py-1 pl-1.5 pr-1.5 sm:max-w-none sm:gap-3 sm:pl-2 sm:pr-3">
             {session.avatarUrl ? (
               <img 
                 src={session.avatarUrl} 
                 alt="头像" 
-                className="w-7 h-7 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700"
+                className="h-7 w-7 rounded-full object-cover ring-1 ring-border"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-[#1a73e8] text-white flex items-center justify-center text-xs font-semibold">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                 {session.displayName.substring(0, 1).toUpperCase()}
               </div>
             )}
             <div className="flex min-w-0 flex-col text-left">
               <span className="max-w-[76px] truncate text-xs font-semibold sm:max-w-[100px]">{session.displayName}</span>
-              <span className="hidden max-w-[100px] truncate text-xs text-gray-500 dark:text-gray-400 sm:block">{session.user.username}</span>
+              <span className="hidden max-w-[100px] truncate text-xs text-muted-foreground sm:block">{session.user.username}</span>
             </div>
             <Button
               size="icon"
               variant="ghost"
               onClick={onLogout}
-              className="h-11 w-11 rounded-md text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-[#393a3b] sm:ml-1 sm:h-6 sm:w-6"
+              className="h-11 w-11 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground sm:ml-1 sm:h-6 sm:w-6"
               title="退出登录"
               aria-label="退出登录"
             >
               <LogOut className="w-3.5 h-3.5" />
             </Button>
           </div>
-        </div>
-      </header>
-      {/* Google Accent Bar */}
-      <div className="google-accent-bar">
-        <div></div>
-        <div></div>
-        <div></div>
-        <div></div>
-      </div>
-
-      {/* Main content grid */}
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="contents"
-        style={tabsStyle}
-      >
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 pb-20 lg:min-h-0 lg:overflow-hidden lg:pb-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1.55fr)_minmax(400px,0.9fr)] gap-6">
-        
-        {/* Left column / tabs container */}
-        <div className="lg:col-span-1 flex flex-col gap-6 min-w-0 lg:min-h-0">
-          
-            <TabsList className="hidden lg:flex w-full justify-start bg-transparent h-auto p-0 mb-6 gap-2">
-              <TabsTrigger 
-                value="courses"
-                className="rounded-md px-4 py-2 font-medium text-sm text-gray-600 dark:text-gray-400 data-[state=active]:bg-[#e8f0fe] data-[state=active]:text-[#1a73e8] dark:data-[state=active]:bg-[#8ab4f8]/20 dark:data-[state=active]:text-[#8ab4f8] hover:bg-gray-100 dark:hover:bg-[#2d2e30] data-[state=active]:hover:bg-[#e8f0fe] dark:data-[state=active]:hover:bg-[#8ab4f8]/20 transition-colors shadow-none border-none"
-              >
-                <BookOpen className="w-4 h-4 mr-2" />
-                课程列表 ({visibleCourses.length})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="sign"
-                className="rounded-md px-4 py-2 font-medium text-sm text-gray-600 dark:text-gray-400 data-[state=active]:bg-[#e8f0fe] data-[state=active]:text-[#1a73e8] dark:data-[state=active]:bg-[#8ab4f8]/20 dark:data-[state=active]:text-[#8ab4f8] hover:bg-gray-100 dark:hover:bg-[#2d2e30] data-[state=active]:hover:bg-[#e8f0fe] dark:data-[state=active]:hover:bg-[#8ab4f8]/20 transition-colors shadow-none border-none"
-              >
-                <MapPin className="w-4 h-4 mr-2" />
-                自动签到
-              </TabsTrigger>
-              <TabsTrigger 
-                value="settings"
-                className="rounded-md px-4 py-2 font-medium text-sm text-gray-600 dark:text-gray-400 data-[state=active]:bg-[#e8f0fe] data-[state=active]:text-[#1a73e8] dark:data-[state=active]:bg-[#8ab4f8]/20 dark:data-[state=active]:text-[#8ab4f8] hover:bg-gray-100 dark:hover:bg-[#2d2e30] data-[state=active]:hover:bg-[#e8f0fe] dark:data-[state=active]:hover:bg-[#8ab4f8]/20 transition-colors shadow-none border-none"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                提交设置
-              </TabsTrigger>
-            </TabsList>
-
+            </div>
+          </header>
+          <div className="google-accent-bar lg:hidden">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+          <main id="dashboard-main" className="min-h-0 flex-1 pb-20 lg:overflow-y-auto lg:pb-0">
+            <div className="mx-auto w-full min-w-0 px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-6">
+              <div className="min-w-0">
             {/* Courses list tab content */}
             <TabsContent value="courses" className="outline-none m-0 lg:flex-1 lg:min-h-0">
               <Card className="bg-card shadow-sm border-none lg:flex lg:h-full lg:min-h-0 lg:flex-col">
@@ -1456,201 +1466,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
               </Card>
             </TabsContent>
 
-            {/* Mobile Tasks tab content */}
-            <TabsContent value="tasks" className="lg:hidden outline-none m-0">
-              {/* Mobile Tasks Card */}
-              <Card className="bg-card shadow-sm border-none min-w-0 w-full overflow-hidden">
-                <CardHeader className="py-4 px-4 sm:px-6 border-b border-border/50 flex flex-row items-start justify-between gap-3 space-y-0 min-w-0">
-                  <div className="min-w-0">
-                    <CardTitle className="text-base font-semibold">任务列表</CardTitle>
-                    <CardDescription className="text-xs wrap-anywhere">查看您的任务运行状态与进度</CardDescription>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    disabled={tasksLoading}
-                    onClick={() => void fetchTasks()}
-                    className="h-11 w-11 shrink-0 rounded-full hover:bg-gray-100 dark:hover:bg-[#2d2e30] sm:h-8 sm:w-8"
-                    aria-label="刷新任务列表"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${tasksLoading ? 'animate-spin' : ''}`} />
-                  </Button>
+            <TabsContent value="tasks" className="m-0 outline-none lg:hidden">
+              <Card className="min-w-0 overflow-hidden border-none bg-card shadow-sm">
+                <CardHeader className="border-b border-border/50 px-4 py-4 sm:px-6">
+                  <CardTitle className="text-base font-semibold">任务</CardTitle>
+                  <CardDescription className="text-xs">查看任务运行状态与进度</CardDescription>
                 </CardHeader>
-                <CardContent className="p-0 min-w-0 w-full overflow-hidden">
-                  {/* Task Filter Chips */}
-                  {tasks.length > 0 && (
-                    <div className="flex gap-2 px-4 sm:px-6 py-3 border-b border-border/40 overflow-x-auto no-scrollbar">
-                      {[
-                        { id: 'active', label: '进行中', count: taskCounts.active },
-                        { id: 'completed', label: '已结束', count: taskCounts.completed },
-                      ].map(chip => (
-                        <button
-                          key={chip.id}
-                          onClick={() => setTaskFilter(chip.id as 'active' | 'completed')}
-                          className={`flex min-h-11 min-w-11 items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
-                            taskFilter === chip.id
-                              ? 'bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]'
-                              : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          {chip.label}
-                          <span className={`text-xs px-1.5 py-0.5 rounded-sm ${
-                            taskFilter === chip.id
-                              ? 'bg-[#1a73e8]/15 text-[#1a73e8] dark:bg-[#8ab4f8]/30 dark:text-[#8ab4f8]'
-                              : 'bg-muted-foreground/10 text-muted-foreground'
-                          }`}>
-                            {chip.count}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="w-full min-w-0 lg:max-h-[550px] lg:overflow-y-auto">
-                    {tasksLoading && tasks.length === 0 ? (
-                      <div className="text-center p-8 text-gray-500 text-sm">
-                        获取任务状态中...
-                      </div>
-                    ) : tasks.length === 0 ? (
-                      <div className="text-center p-8 text-gray-500 text-xs">
-                        暂无历史任务，请先在课程列表选择课程并提交。
-                      </div>
-                    ) : filteredTasks.length === 0 ? (
-                      <div className="text-center p-12 text-gray-500 text-xs flex flex-col items-center justify-center gap-3">
-                        <div className="w-10 h-10 rounded bg-muted/50 flex items-center justify-center text-muted-foreground">
-                          <Activity className="w-6 h-6 stroke-[1.5]" />
-                        </div>
-                        <div>
-                          {taskFilter === 'active' ? '暂无进行中的任务。' : '暂无已结束的任务。'}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 min-w-0 w-full">
-                        {filteredTasks.map((task) => (
-                          <TaskInlineItem
-                            key={task.id}
-                            task={task}
-                            courseNameByIdentifier={courseNameByIdentifier}
-                            onUnauthorized={handleTaskUnauthorized}
-                            onStopTask={handleStopTask}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                <CardContent className="flex min-h-0 min-w-0 flex-col p-0">
+                  <TaskStatusContent
+                    tasks={tasks}
+                    filteredTasks={filteredTasks}
+                    taskCounts={taskCounts}
+                    taskFilter={taskFilter}
+                    tasksLoading={tasksLoading}
+                    taskSnapshots={taskSnapshots}
+                    courseNameByIdentifier={courseNameByIdentifier}
+                    onTaskFilterChange={setTaskFilter}
+                    onRefresh={() => void fetchTasks()}
+                    onStopTask={handleStopTask}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
-        </div>
-
-        {/* Right column / Task listing and Log streams */}
-        <div className="hidden lg:flex lg:h-full lg:min-h-0 flex-col gap-6 min-w-0 self-start">
-          <Card className="bg-card shadow-sm border-none min-w-0 w-full overflow-hidden flex h-full min-h-0 max-h-none flex-col sticky top-0">
-            <CardHeader className="py-4 px-6 border-b border-border/50 flex flex-row items-start justify-between gap-3 space-y-0 min-w-0">
-              <div className="min-w-0">
-                <CardTitle className="text-base font-semibold">任务列表</CardTitle>
-                <CardDescription className="text-xs wrap-anywhere">查看您的任务运行状态与进度</CardDescription>
               </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                disabled={tasksLoading}
-                onClick={() => void fetchTasks()}
-                className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#2d2e30] shrink-0"
-                aria-label="刷新任务列表"
-              >
-                <RefreshCw className={`w-4 h-4 ${tasksLoading ? 'animate-spin' : ''}`} />
-              </Button>
-            </CardHeader>
-            <CardContent className="p-0 min-w-0 w-full overflow-hidden flex flex-1 flex-col">
-              {/* Task Filter Chips */}
-              {tasks.length > 0 && (
-                <div className="flex gap-2 px-6 py-3 border-b border-border/40 overflow-x-auto no-scrollbar">
-                  {[
-                    { id: 'active', label: '进行中', count: taskCounts.active },
-                    { id: 'completed', label: '已结束', count: taskCounts.completed },
-                  ].map(chip => (
-                    <button
-                      key={chip.id}
-                      onClick={() => setTaskFilter(chip.id as 'active' | 'completed')}
-                      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                        taskFilter === chip.id
-                          ? 'bg-[#e8f0fe] text-[#1a73e8] dark:bg-[#8ab4f8]/20 dark:text-[#8ab4f8]'
-                          : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {chip.label}
-                      <span className={`text-xs px-1.5 py-0.5 rounded-sm ${
-                        taskFilter === chip.id
-                          ? 'bg-[#1a73e8]/15 text-[#1a73e8] dark:bg-[#8ab4f8]/30 dark:text-[#8ab4f8]'
-                          : 'bg-muted-foreground/10 text-muted-foreground'
-                      }`}>
-                        {chip.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="min-h-0 flex-1 w-full min-w-0 overflow-y-auto">
-                {tasksLoading && tasks.length === 0 ? (
-                  <div className="flex min-h-full flex-col items-center justify-center gap-4 p-10 text-center text-gray-500 text-sm">
-                    <svg className="google-spinner" viewBox="0 0 50 50">
-                      <circle className="path" cx="25" cy="25" r="20" fill="none" strokeWidth="4"></circle>
-                    </svg>
-                    <span>获取任务状态中...</span>
-                  </div>
-                ) : tasks.length === 0 ? (
-                  <div className="flex min-h-full flex-col items-center justify-center gap-4 p-10 text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-md bg-muted/60 text-muted-foreground">
-                      <Activity className="h-7 w-7 stroke-[1.5]" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="text-sm font-semibold text-foreground">暂无历史任务</div>
-                      <div className="text-xs text-muted-foreground">选择课程后可提交任务</div>
-                    </div>
-                  </div>
-                ) : filteredTasks.length === 0 ? (
-                  <div className="flex min-h-full flex-col items-center justify-center gap-4 p-10 text-center">
-                    <div className="w-12 h-12 rounded-md bg-muted/60 flex items-center justify-center text-muted-foreground">
-                      <Activity className="w-7 h-7 stroke-[1.5]" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="text-sm font-semibold text-foreground">
-                        {taskFilter === 'active' ? '暂无进行中的任务' : '暂无已结束的任务'}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {taskFilter === 'active' ? '已结束任务可切换查看' : '进行中任务可切换查看'}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setTaskFilter(taskFilter === 'active' ? 'completed' : 'active')}
-                      className="h-8 rounded-md px-3 text-xs"
-                    >
-                      {taskFilter === 'active' ? '查看已结束' : '查看进行中'}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="p-4 flex flex-col gap-4 min-w-0 w-full">
-                    {filteredTasks.map((task) => (
-                      <TaskInlineItem
-                        key={task.id}
-                        task={task}
-                        courseNameByIdentifier={courseNameByIdentifier}
-                        onUnauthorized={handleTaskUnauthorized}
-                        onStopTask={handleStopTask}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </main>
         </div>
-
-      </main>
       </Tabs>
 
 
@@ -1696,97 +1537,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ session, onLogout }) => {
         values={studyIncrements}
         onSave={saveStudyIncrement}
       />
-      {/* Mobile Bottom Navigation Bar (MD3 Style with Fluent Design Transition) */}
-      {(() => {
-        const tabsList = ['courses', 'sign', 'tasks', 'settings'];
-        const prevTabVal = prevTab;
-        const prevIndex = tabsList.indexOf(prevTabVal);
-        const currentIndex = tabsList.indexOf(activeTab);
-        const distance = Math.abs(currentIndex - prevIndex);
-        const isMovingRight = currentIndex > prevIndex;
-
-        // 适当减慢时间，以便肉眼清晰捕捉回弹轨迹（1格260ms，2格300ms，3格340ms）
-        const duration = distance === 0 ? 0 : 220 + distance * 40;
-        // 时差拉伸，大跨度有更明显的拉伸和高速度体验
-        const delay = distance * 22;
-
-        // 采用回弹力度更显著的 Q 弹贝塞尔曲线 (overshoot 系数达 1.5)
-        // cubic-bezier(0.25, 1.5, 0.45, 1.08) 在前边缘和后边缘的落点上都会产生显著的物理回弹
-        const easing = 'cubic-bezier(0.25, 1.5, 0.45, 1.08)';
-
-        const transitionStyle = distance === 0
-          ? 'none'
-          : isMovingRight
-            ? `left ${duration}ms ${easing} ${delay}ms, right ${duration}ms ${easing} 0ms`
-            : `left ${duration}ms ${easing} 0ms, right ${duration}ms ${easing} ${delay}ms`;
-
-        const capsuleStyle: React.CSSProperties = {
-          left: `calc(${currentIndex * 25}% + 12.5% - 28px)`,
-          right: `calc(${(3 - currentIndex) * 25}% + 12.5% - 28px)`,
-          transition: transitionStyle,
-        };
-
-        return (
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border flex items-center py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-[0_-1px_3px_rgba(0,0,0,0.05)] px-0">
-            {/* Sliding Capsule Background */}
-            <div
-              className="absolute top-2 h-8 rounded-full bg-accent pointer-events-none z-0"
-              style={capsuleStyle}
-            />
-            {[
-              { id: 'courses', icon: BookOpen, label: '课程' },
-              { id: 'sign', icon: MapPin, label: '签到' },
-              { id: 'tasks', icon: Activity, label: '任务' },
-              { id: 'settings', icon: Settings, label: '设置' },
-            ].map((item) => {
-              const isActive = activeTab === item.id;
-              const Icon = item.icon;
-              const showActiveTaskBadge = item.id === 'tasks' && taskCounts.active > 0;
-              const showSignMonitorBadge = item.id === 'sign' && signMonitorActive;
-
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id)}
-                  className="relative z-10 flex flex-1 flex-col items-center justify-center gap-1 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                  aria-label={item.label}
-                >
-                  <div
-                    className={`relative flex items-center justify-center w-14 h-8 rounded-full transition-colors duration-200 ${
-                      isActive
-                        ? 'text-accent-foreground'
-                        : 'text-muted-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 ${isActive ? 'fill-current/10' : ''}`} />
-                    {showActiveTaskBadge && (
-                      <span
-                        className="absolute -right-0.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-card"
-                        aria-label={`${taskCounts.active} 个进行中的任务`}
-                      >
-                        {taskCounts.active}
-                      </span>
-                    )}
-                    {showSignMonitorBadge && (
-                      <span
-                        className="absolute right-1 top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card"
-                        aria-label="签到已启用"
-                      />
-                    )}
-                  </div>
-                  <span
-                    className={`text-xs transition-colors duration-200 ${
-                      isActive ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        );
-      })()}
+      <DashboardNavigation
+        mode="mobile"
+        activeTab={activeTab}
+        previousTab={prevTab}
+        activeTaskCount={taskCounts.active}
+        signMonitorActive={signMonitorActive}
+        onTabChange={handleTabChange}
+      />
     </div>
   );
 };

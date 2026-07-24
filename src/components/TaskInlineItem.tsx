@@ -1,4 +1,4 @@
-import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { TaskStudyProgress } from './TaskStudyProgress';
@@ -17,18 +17,13 @@ import {
   Settings2,
   Hourglass
 } from 'lucide-react';
-import {
-  getTask,
-  getUserFacingErrorMessage,
-  isAuthExitError,
-  type Task,
-  type TaskProgress,
-} from '@/lib/api';
+import { type Task } from '@/lib/api';
+import type { TaskProgressSnapshot } from '@/hooks/useTaskProgressPolling';
 
 interface TaskInlineItemProps {
   task: Task;
   courseNameByIdentifier?: Record<string, string>;
-  onUnauthorized?: () => void;
+  snapshot?: TaskProgressSnapshot;
   onStopTask: (taskId: string) => void;
 }
 
@@ -89,114 +84,32 @@ function getAutoSubmitLabel(value: 0 | 1 | 2 | undefined) {
   return '模式 0';
 }
 
-export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseNameByIdentifier = {}, onUnauthorized, onStopTask }) => {
-  const [progress, setProgress] = useState<TaskProgress | null>(() => task.progress ?? null);
-  const [polledStatus, setPolledStatus] = useState<Task['status'] | null>(null);
+export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseNameByIdentifier = {}, snapshot, onStopTask }) => {
   const [showConfig, setShowConfig] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [progressErrorMessage, setProgressErrorMessage] = useState('');
-  const latestProgressRequestRef = useRef(0);
+  const taskProgress = task.progress ?? null;
+  const snapshotProgress = snapshot?.progress ?? null;
+  const progress = (() => {
+    if (!snapshotProgress) return taskProgress;
+    if (!taskProgress) return snapshotProgress;
+
+    const taskTime = Date.parse(taskProgress.updatedAt ?? '');
+    const snapshotTime = Date.parse(snapshotProgress.updatedAt ?? '');
+    return Number.isNaN(taskTime) || Number.isNaN(snapshotTime) || snapshotTime >= taskTime
+      ? snapshotProgress
+      : taskProgress;
+  })();
 
   const taskStatusIsTerminal = ['stopped', 'success', 'partial_success', 'failed'].includes(task.status);
-  const polledStatusIsTerminal = polledStatus !== null
-    && ['stopped', 'success', 'partial_success', 'failed'].includes(polledStatus);
+  const polledStatusIsTerminal = snapshot?.status !== undefined
+    && ['stopped', 'success', 'partial_success', 'failed'].includes(snapshot.status);
   const effectiveStatus = taskStatusIsTerminal
     ? task.status
     : polledStatusIsTerminal
-      ? polledStatus
+      ? snapshot.status
       : task.status === 'stopping'
         ? task.status
-        : polledStatus ?? task.status;
-
-  const applyProgress = useEffectEvent((nextProgress: TaskProgress) => {
-    setProgress((currentProgress) => {
-      if (!currentProgress) {
-        return nextProgress;
-      }
-
-      const currentTime = Date.parse(currentProgress.updatedAt ?? '');
-      const nextTime = Date.parse(nextProgress.updatedAt ?? '');
-
-      if (Number.isNaN(currentTime) || Number.isNaN(nextTime) || nextTime >= currentTime) {
-        return nextProgress;
-      }
-
-      return currentProgress;
-    });
-  });
-
-  const fetchProgress = useEffectEvent(async () => {
-    const requestId = latestProgressRequestRef.current + 1;
-    latestProgressRequestRef.current = requestId;
-
-    try {
-      const result = await getTask(task.id);
-      if (requestId === latestProgressRequestRef.current) {
-        setProgressErrorMessage('');
-        setPolledStatus(result.data.status);
-        if (result.data.progress) {
-          applyProgress(result.data.progress);
-        }
-      }
-    } catch (err) {
-      if (isAuthExitError(err)) {
-        onUnauthorized?.();
-        return;
-      }
-
-      setProgressErrorMessage(getUserFacingErrorMessage(err, '获取任务进度失败'));
-    }
-  });
-
-  useEffect(() => {
-    const shouldFetchSnapshot = ['running', 'stopping', 'stopped', 'success', 'partial_success', 'failed'].includes(effectiveStatus);
-    const shouldPollProgress = effectiveStatus === 'running'
-      || effectiveStatus === 'stopping';
-    const snapshotTimer = shouldFetchSnapshot
-      ? window.setTimeout(() => {
-          void fetchProgress();
-        }, 0)
-      : null;
-
-    if (!shouldPollProgress) {
-      return () => {
-        if (snapshotTimer) {
-          clearTimeout(snapshotTimer);
-        }
-      };
-    }
-
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const stopPolling = () => {
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-    };
-
-    const startPolling = () => {
-      if (pollTimer) {
-        return;
-      }
-
-      void fetchProgress();
-      pollTimer = setInterval(() => {
-        void fetchProgress();
-      }, 2500);
-    };
-
-    if (shouldPollProgress) {
-      startPolling();
-    }
-
-    return () => {
-      if (snapshotTimer) {
-        clearTimeout(snapshotTimer);
-      }
-      stopPolling();
-    };
-  }, [effectiveStatus, task.id]);
+        : snapshot?.status ?? task.status;
 
   const handleAction = async (actionFn: (id: string) => void | Promise<void>, id: string) => {
     setActionLoading(true);
@@ -288,7 +201,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
   const showProgress = progress && snapshotStatuses.includes(effectiveStatus);
   const progressCourseLabel = progress?.currentCourse || progressFallback.course;
   const progressChapterLabel = progress?.currentChapter || (progressFallback.chapter === '--' ? '' : progressFallback.chapter);
-  const taskErrorMessage = progressErrorMessage || task.errorMessage || (effectiveStatus === 'failed' ? progress?.message : '');
+  const taskErrorMessage = snapshot?.errorMessage || task.errorMessage || (effectiveStatus === 'failed' ? progress?.message : '');
   const canStopTask = stoppableStatuses.includes(task.status) || stoppableStatuses.includes(effectiveStatus);
   const isStoppingTask = task.status === 'stopping' || effectiveStatus === 'stopping';
 
@@ -342,14 +255,14 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
           {displayCourses === undefined ? (
             <span className="text-xs font-medium text-muted-foreground">课程范围未记录</span>
           ) : displayCourses.length === 0 ? (
-            <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:bg-primary/20 dark:text-primary-foreground/90">
+            <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:bg-primary/20">
               未选择课程
             </span>
           ) : (
             displayCourses.map((courseName, i) => (
               <span
                 key={i}
-                className="inline-flex min-w-0 max-w-full items-center rounded-md border border-primary/15 bg-primary/8 px-2 py-1 text-xs font-medium text-primary dark:bg-primary/15 dark:text-primary-foreground/90 sm:max-w-[180px]"
+                className="inline-flex min-w-0 max-w-full items-center rounded-md border border-primary/15 bg-primary/8 px-2 py-1 text-xs font-medium text-primary dark:bg-primary/15 sm:max-w-[180px]"
                 title={courseName}
               >
                 <span className="min-w-0 truncate">{courseName}</span>
@@ -387,7 +300,7 @@ export const TaskInlineItem: React.FC<TaskInlineItemProps> = ({ task, courseName
                 </div>
               )}
             </div>
-            <span className="shrink-0 text-lg font-bold tabular-nums text-primary dark:text-primary-foreground">{percent}%</span>
+            <span className="shrink-0 text-lg font-bold tabular-nums text-primary">{percent}%</span>
           </div>
 
           <div className="space-y-1.5">
